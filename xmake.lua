@@ -1,4 +1,4 @@
-set_languages("c++11")
+set_languages("c++17")
 
 -- libs
 add_requires("imgui 1.88", {configs = {glfw_opengl3 = true}})

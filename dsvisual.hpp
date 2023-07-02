@@ -1,10 +1,20 @@
 #ifndef __DS_VISUAL_HPP__
 #define __DS_VISUAL_HPP__
 
+// std
+#include <string>
+#include <typeinfo>
+#include <thread>
+#include <chrono>
+#include <mutex>
+
+// DStruct
 #include <dstruct.hpp>
 
+// glfw
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
+// imgui
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -29,7 +39,7 @@ public:
         return __mWindow;
     }
 
-public:
+private:
     PlatformManager() {
         glfwSetErrorCallback(dsvisual::glfw_error_callback);
         
@@ -87,26 +97,96 @@ private:
     GLFWwindow *__mWindow;
 };
 
-
-struct Widget {
-    virtual void draw() { };
-};
-
+class Widget;
 class Window {
 
-public:
-    Window() = default;
+private: // bigfive
+    Window() { std::thread(&Window::render, this).detach(); }
+    Window(Window const&)            = delete;
+    Window& operator=(Window const&) = delete;
+    Window(Window&&)                 = delete;
+    Window& operator=(Window&&)      = delete;
+
+    void render();
 
 public:
+    static Window & getInstance() {
+        static Window w;
+        return w;
+    }
+
     void addWidget(Widget *wPtr) {
+        std::lock_guard<std::mutex> _al(_mMutex);
         _mWidgetRenderQ.push(wPtr);
+    }
+
+    void removeWidget(Widget *wPtr) {
+        std::lock_guard<std::mutex> _al(_mMutex);
+        _mWidgetDestoryTree.insert(reinterpret_cast<size_t>(wPtr));
     }
 
     bool closed() {
         return glfwWindowShouldClose(PlatformManager::getInstance().getWindow());
     }
 
-    void render() {
+protected:
+    static std::mutex _mMutex;
+    dstruct::BSTree<size_t> _mWidgetDestoryTree;
+    dstruct::Deque<Widget *> _mWidgetRenderQ;
+};
+
+std::mutex Window::_mMutex;
+
+class Widget {
+
+public:
+    Widget(const std::string name = "Widget", bool visible = true) :
+        _mVisible { visible }, _mName { name } {
+        Window::getInstance().addWidget(this);
+    }
+    
+    virtual ~Widget() {
+        Window::getInstance().removeWidget(this);
+    }
+
+public: // op
+
+    bool getVisible() const { return _mVisible; }
+    std::string getName() const { return _mName; }
+
+    void setVisible(bool visible) { _mVisible = visible; }
+    void setName(std::string name) { _mName = name; }
+
+public:
+    void draw() {
+
+        if (_mVisible == false) return;
+
+        // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+        ImGui::Begin(_mName.c_str(), &_mVisible);
+        ImGui::SetNextWindowSize(ImVec2(500, 500));
+        
+        // sub-class to impl
+        draw_impl();
+
+        ImGui::End();
+    }
+
+protected: // top-down interface
+    virtual void draw_impl() { /* */ };
+
+protected:
+    bool _mVisible;
+    std::string _mName;
+};
+
+
+// split impl from class-in to class-out, incomplete-type issue for w->render
+void Window::render() {
+    while (true) {
+        
+        // 60 fps
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 60 - 10));
 
         auto window = PlatformManager::getInstance().getWindow();;
 
@@ -126,10 +206,37 @@ public:
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        while (!_mWidgetRenderQ.empty() && !closed()) {
-            Widget *w = _mWidgetRenderQ.front();
+
+        // DSVisual Basic Setting
+        ImGui::ShowDemoWindow();
+        ImGui::GetIO().FontGlobalScale = 1.5f;
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.WindowMinSize = ImVec2(400, 300);
+
+        // Render Widget
+        float winXPos = 0, winYPos = 0;
+        int renderCnt = _mWidgetRenderQ.size();
+        while (renderCnt-- && !closed()) {
+            
+            std::lock_guard<std::mutex> _al(_mMutex);
+
+            Widget *widget = _mWidgetRenderQ.front();
             _mWidgetRenderQ.pop_front();
-            w->draw();
+            ImGui::SetNextWindowPos(
+                ImVec2(winXPos += 50, winYPos += 50),
+                ImGuiCond_FirstUseEver
+            );
+
+            // check and del
+            auto wdtSize = _mWidgetDestoryTree.size();
+            if (wdtSize)
+                _mWidgetDestoryTree.erase(reinterpret_cast<size_t>(widget));
+
+            if (wdtSize == _mWidgetDestoryTree.size()) {
+                widget->draw();
+                _mWidgetRenderQ.push_back(widget);
+            }
+
         }
 
         // Rendering
@@ -143,59 +250,86 @@ public:
 
         glfwSwapBuffers(window);
     }
+}
 
-protected:
-    dstruct::Deque<Widget *> _mWidgetRenderQ;
-};
+
+
 
 template <typename T, size_t N>
-class Array : private dstruct::Array<T, N>, public Widget {
+class Array : public dstruct::Array<T, N>, public Widget {
+
+protected:
+    using DStruct = dstruct::Array<T, N>;
+
 public:
-    void draw() override {
-        
-        static bool show_demo_window = true;
-        static bool show_another_window = true;
-
-        auto io = ImGui::GetIO();
-
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-            char title[20] = { "Hello, world!" };
-
-            title[0] += counter % 3;
-
-            ImGui::Begin(title);                // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            //ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window! %p", this);
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
-            ImGui::End();
-        }
-
+    Array() {
+        _mName = std::string("Array-") + std::to_string(reinterpret_cast<size_t>(this));
+        _mStartIndex = 0;
+        _mHighlightIndex = -1;
     }
 
+public: // for user
+    T & operator[](int index) {
+        if (index < 0)
+            index = N + index;
+        _mHighlightIndex = index;
+        return DStruct::operator[](index);
+    }
+
+    T operator[](int index) const {
+        if (index < 0)
+            index = N + index;
+        _mHighlightIndex = index;
+        return DStruct::operator[](index);
+    }
+
+protected: // interface impl
+    void draw_impl() override {
+        ImGuiStyle& style = ImGui::GetStyle();
+        const float buttonWidth = 50.0f;
+        const float buttonHeight = 50.0f;
+        const float buttonSpacing = 2.0f;
+        const float windowWidth = ImGui::GetWindowWidth();
+
+        auto oldSpacing = style.ItemSpacing;
+
+        style.ItemSpacing = ImVec2(10, 10);
+    
+        if (ImGui::CollapsingHeader("Member Info")) {
+            ImGui::Text("this: %p", this); ImGui::Separator();
+            ImGui::Text("_mSize: %ld", N); ImGui::Separator();
+            ImGui::Text("_mC Address: %p", this->_mC); ImGui::Separator();
+        }
+        
+        if (ImGui::CollapsingHeader("Data Visual")) {
+            for (int i = _mStartIndex; i < N; i++) {
+                auto remindWidth = windowWidth - ImGui::GetCursorPosX(); 
+                if (i > 0 && remindWidth < buttonWidth + buttonSpacing) {
+                    ImGui::Button(std::to_string((*this)[i]).c_str(), ImVec2(remindWidth - buttonSpacing, buttonHeight));
+                    break;
+                } else {
+                    if (i == _mHighlightIndex) {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 0.7f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8f, 0.0f, 0.0f, 1.0f));
+                    }
+                    ImGui::Button(std::to_string(DStruct::operator[](i)).c_str(), ImVec2(buttonWidth, buttonHeight));
+                    if (i == _mHighlightIndex) { ImGui::PopStyleColor(3); /*_mHighlightIndex = -1;*/ }
+                    ImGui::SameLine(0, buttonSpacing);
+                }
+            }
+            ImGui::Separator();
+            ImGui::SetNextItemWidth(windowWidth);
+            ImGui::SliderInt("", &_mStartIndex, 0, N - 1, "Start Index %d"); ImGui::Separator();
+        }
+
+        
+        style.ItemSpacing = oldSpacing;
+
+    }
+protected:
+    int _mHighlightIndex;
+    int _mStartIndex;
 };
 
 

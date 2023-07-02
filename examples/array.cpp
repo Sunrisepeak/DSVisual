@@ -1,20 +1,28 @@
-#include <dsvisual.hpp>
+#include <iostream>
+#include <thread>
+#include <chrono>
 
+#include <dsvisual.hpp>
 
 
 int main() {
 
-    dsvisual::Window w;
+    dsvisual::Array<int, 10> arr;
+    dsvisual::Array<int, 5> arr2;
 
-    dsvisual::Array<int, 4> arr;
+    while (true) {
+        static int data = 0;
 
+        for (int i = 0; i < arr.size(); i++) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            
+            data = (data + 1) % 100;
 
-    while (!w.closed()) {
-        dsvisual::Array<int, 5> arr2;
-        w.addWidget(&arr);
-        w.addWidget(&arr2);
-        w.render();
+            arr[i] = arr2[i % 5] = data;
+        }
+
     }
+
 
     return 0;
 }
