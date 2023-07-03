@@ -254,7 +254,7 @@ void WindowManager::__render() {
 
 /* --------------------------------------------------------------------------------------------------------- */
 
-PlatformManager::PlatformManager() : __mWindowExited { false } {
+PlatformManager::PlatformManager() : __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
     //__platform_init(); // platform resource cann't alloc in twice thread
     __mRenderThread = std::move(std::thread(&PlatformManager::__window_render, this));
 }

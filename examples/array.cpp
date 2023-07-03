@@ -9,7 +9,6 @@ int main() {
 
     dsvisual::Array<int, 10> arr1;
     dsvisual::Array<int, 5> arr2;
-    dsvisual::Array<int, 20> arr3;
 
     static int data = 0;
 
