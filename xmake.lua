@@ -5,7 +5,7 @@ add_requires("imgui 1.88", {configs = {glfw_opengl3 = true}})
 
 add_includedirs(
     ".",
-    "DStruct"
+    "third-party/DStruct"
 )
 
 add_packages("imgui")
