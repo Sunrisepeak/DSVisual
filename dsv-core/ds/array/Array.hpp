@@ -13,7 +13,7 @@ class Array : public dstruct::Array<T, N>, public Widget {
 protected:
     using DStruct = dstruct::Array<T, N>;
 
-public:
+public: // bigfive
     Array() {
         _mName = std::string("Array-") + std::to_string(reinterpret_cast<size_t>(this));
         _mStartIndex = 0;
@@ -37,13 +37,13 @@ public: // for user
 
 protected: // interface impl
 
-    void draw_basic_info_impl() override {
+    void _drawBasicInfoImpl() override {
         ImGui::Text("this: %p", this); ImGui::Separator();
         ImGui::Text("_mSize: %ld", N); ImGui::Separator();
         ImGui::Text("_mC Address: %p", this->_mC); ImGui::Separator();
     }
 
-    void draw_visual_impl() override {
+    void _drawVisualImpl() override {
         ImGuiStyle& style = ImGui::GetStyle();
         const float buttonWidth = 50.0f;
         const float buttonHeight = 50.0f;
@@ -76,7 +76,7 @@ protected: // interface impl
     }
 
 
-    void draw_control_impl() override {
+    void _drawControlImpl() override {
         ImGui::SetNextItemWidth(ImGui::GetWindowWidth());
         ImGui::SliderInt("", &_mStartIndex, 0, N - 1, "Start Index %d"); ImGui::Separator();
     }

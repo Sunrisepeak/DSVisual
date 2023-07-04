@@ -105,7 +105,7 @@ private:
     }
 
 private: // platform init/deinit: ensure platform resource init/deinit in same thread
-    void __platform_init() {
+    void __platformInit() {
         
         glfwSetErrorCallback(dsvisual::glfw_error_callback);
         
@@ -140,7 +140,7 @@ private: // platform init/deinit: ensure platform resource init/deinit in same t
         ImGui_ImplOpenGL3_Init(glsl_version);
     }
 
-    void __platform_deinit() {
+    void __platformDeinit() {
 
         // Cleanup
         ImGui_ImplOpenGL3_Shutdown();
@@ -152,7 +152,7 @@ private: // platform init/deinit: ensure platform resource init/deinit in same t
     }
 
 private: // render thread
-    void __window_render();
+    void __windowRender();
 
 private:
     //std::mutex __mWindowOwnship;
@@ -173,7 +173,12 @@ public:
         _mVisible { visible }, _mName { name } {
         PlatformManager::getWindowManagerInstance().addWidget(this);
     }
-    
+
+    Widget(const Widget&) = delete;
+    Widget(Widget&&) = delete; // TODO: to support
+    Widget & operator=(const Widget&) = delete;
+    Widget & operator=(Widget&&) = delete; // TODO: to support
+
     virtual ~Widget() {
         PlatformManager::getWindowManagerInstance().removeWidget(this);
     }
@@ -196,18 +201,18 @@ public:
         //ImGui::SetNextWindowSize(ImVec2(500, 500));
         
         // sub-class to impl
-        if (ImGui::CollapsingHeader("basic info")) draw_basic_info_impl();
-        if (ImGui::CollapsingHeader("data visual")) draw_visual_impl();
-        if (ImGui::CollapsingHeader("control")) draw_control_impl();
+        if (ImGui::CollapsingHeader("basic info")) _drawBasicInfoImpl();
+        if (ImGui::CollapsingHeader("data visual")) _drawVisualImpl();
+        if (ImGui::CollapsingHeader("control")) _drawControlImpl();
         
 
         ImGui::End();
     }
 
 protected: // top-down interface
-    virtual void draw_basic_info_impl() { }
-    virtual void draw_visual_impl() { /* */ }
-    virtual void draw_control_impl() { }
+    virtual void _drawBasicInfoImpl() { }
+    virtual void _drawVisualImpl() { /* */ }
+    virtual void _drawControlImpl() { }
 
 protected:
     bool _mVisible;
@@ -255,8 +260,8 @@ void WindowManager::__render() {
 /* --------------------------------------------------------------------------------------------------------- */
 
 PlatformManager::PlatformManager() : __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
-    //__platform_init(); // platform resource cann't alloc in twice thread
-    __mRenderThread = std::move(std::thread(&PlatformManager::__window_render, this));
+    //__platformInit(); // platform resource cann't alloc in twice thread
+    __mRenderThread = std::move(std::thread(&PlatformManager::__windowRender, this));
 }
 
 // contruct/destory seq for global obj 
@@ -265,12 +270,12 @@ WindowManager & PlatformManager::getWindowManagerInstance() {
 }
 
 // split impl from class-in to class-out, incomplete-type issue for w->render
-void PlatformManager::__window_render() {
+void PlatformManager::__windowRender() {
     
     int display_w, display_h;
     ImVec4 clear_color = ImVec4(0.898f, 1.0f, 0.8f, 1.0f);;
 
-    __platform_init();
+    __platformInit();
     while (!__mWindowExited) {
         // 60 fps
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 60 - 10));
@@ -303,7 +308,7 @@ void PlatformManager::__window_render() {
 
         glfwSwapBuffers(__mWindow);
     }
-    __platform_deinit();
+    __platformDeinit();
 }
 
 }
