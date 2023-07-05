@@ -2,6 +2,7 @@
 #define __DSVISUAL_CORE_HPP__DSVISUAL
 
 // std
+//#include <iostream>
 #include <string>
 #include <typeinfo>
 #include <thread>
@@ -79,6 +80,7 @@ public:
         static bool firstAccessFlag = true;
         while (firstAccessFlag && getInstance().__mWindow == nullptr);
         firstAccessFlag = false;
+        if (getInstance().__mWindowExited) return true;
         return glfwWindowShouldClose(getInstance().__mWindow);
     }
 /*
@@ -151,6 +153,7 @@ private: // platform init/deinit: ensure platform resource init/deinit in same t
 
         glfwDestroyWindow(__mWindow);
         glfwTerminate();
+
     }
 
 private: // render thread
@@ -235,7 +238,7 @@ void WindowManager::__render() {
     float winXPos = 0, winYPos = 0;
     int renderCnt = _mWidgetRenderQ.size();
     while (renderCnt--) {
-        
+
         std::lock_guard<std::mutex> _al(_mMutex);
 
         Widget *widget = _mWidgetRenderQ.front();
@@ -308,6 +311,8 @@ void PlatformManager::__windowRender() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(__mWindow);
+
+        if (PlatformManager::windowClosed()) __mWindowExited = true;
     }
     __platformDeinit();
 }
