@@ -7,32 +7,57 @@
 
 int main() {
 
-    dsvisual::Array<int, 10> arr1;
-    dsvisual::Array<int, 5> arr2;
 
+{// test: auto create/destory
+    dsvisual::Array<int, 5> arr;
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+}
+
+{// test: dynamic create/destory
+    dsvisual::Array<int, 5> arr;
     dstruct::Vector<dsvisual::Array<int, 5> *> arrVec;
 
     for (int i = 0; i < 3; i++) {
-        arrVec.push_back(new decltype(arr2)());
-    }
-
-    while (!dsvisual::PlatformManager::windowClosed()) {
-        // modify arr1 arr2
-        for (int i = 0; i < 100; i++) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-            arr1[i % arr1.size()] = i;
-            arr2[i % arr2.size()] = i;
-
-            for (auto arrPtr : arrVec) {
-                (*arrPtr)[i % arrPtr->size()] = i;
-            }
-        }
+        arrVec.push_back(new decltype(arr)());
     }
 
     for (auto arrPtr : arrVec) {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         delete arrPtr;
     }
+}
 
+{// test: track modified element
+    dsvisual::Array<int, 5> arr;
+    for (int i = 0; i < arr.size(); i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+        arr[i] = i;
+    }
+}
+
+{// test: track iterator
+
+    dsvisual::Array<int, 5> arr;
+    for (auto it = arr.begin(); it != arr.end(); it++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    }
+}
+
+{// test: track iterator and modify
+
+    dsvisual::Array<int, 5> arr;
+    for (auto it = arr.begin(); it != arr.end(); it++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        *it = 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+
+{// test: control index
+    dsvisual::Array<int, 5> arr;
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+}
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     return 0;
 }
