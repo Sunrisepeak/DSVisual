@@ -8,6 +8,8 @@
 #include <chrono>
 #include <mutex>
 
+#include <dstruct.hpp>
+
 // glfw
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
@@ -49,7 +51,7 @@ public:
 
     void removeWidget(Widget *wPtr) {
         std::lock_guard<std::mutex> _al(_mMutex);
-        _mWidgetDestoryTree.insert(wPtr);
+        _mWidgetDestoryTree.push(wPtr);
     }
 
 protected:
@@ -243,14 +245,13 @@ void WindowManager::__render() {
             ImGuiCond_FirstUseEver
         );
 
-        // check and del
-        auto wdtSize = _mWidgetDestoryTree.size();
-        if (wdtSize)
-            _mWidgetDestoryTree.erase(widget);
+        auto it = _mWidgetDestoryTree.find(widget);
 
-        if (wdtSize == _mWidgetDestoryTree.size()) {
+        if (it == _mWidgetDestoryTree.end()) {
             widget->draw();
             _mWidgetRenderQ.push_back(widget);
+        } else {
+            _mWidgetDestoryTree.erase(it);
         }
 
     }
