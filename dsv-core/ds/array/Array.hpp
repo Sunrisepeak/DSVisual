@@ -75,20 +75,25 @@ protected: // interface impl
 
     void _drawVisualImpl() override {
         ImGuiStyle& style = ImGui::GetStyle();
-        float buttonWidth = 50.0f;
-        const float buttonHeight = 50.0f;
         const float buttonSpacing = 2.0f;
         const float windowWidth = ImGui::GetWindowWidth();
+        float buttonWidth, buttonHeight;
         auto oldSpacing = style.ItemSpacing;
 
-        style.ItemSpacing = ImVec2(10, 10);
-    
-        for (int i = _mStartIndex; i < N; i++) {
+        buttonWidth = buttonHeight = windowWidth / 15;
+
+        style.ItemSpacing = ImVec2(buttonWidth, buttonHeight);
+
+        ImGui::Separator();
+        for (int i = _mStartIndex; i < N; i++) {            
             auto remindWidth = windowWidth - ImGui::GetCursorPosX();
 
             if (i > 0 && remindWidth < buttonWidth + buttonSpacing) {
                buttonWidth = remindWidth - buttonSpacing;
-               if (buttonWidth <= 0) break;
+               if (buttonWidth <= 0) {
+                    ImGui::Separator();
+                    break;
+               }
             }
 
             auto highlight = style.Colors[ImGuiCol_Button];
@@ -99,14 +104,18 @@ protected: // interface impl
             ImGui::PushStyleColor(ImGuiCol_Button, highlight);
             //ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
             //ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8f, 0.0f, 0.0f, 1.0f));
-            ImGui::Button(std::to_string(DStruct::operator[](i)).c_str(), ImVec2(buttonWidth, buttonHeight));
+            std::string text = std::to_string(DStruct::operator[](i));
+            ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+            if (textSize.x > buttonWidth) buttonWidth = textSize.x;
+            ImGui::Button(text.c_str(), ImVec2(buttonWidth + 10, buttonHeight + 20));
             if (i == _mModifiedPos || i == _mIteratorPos) { ImGui::PopStyleColor(1); /*_mModifiedPos = -1;*/ }
 
-            ImGui::SameLine(0, buttonSpacing);
+            if (i < N - 1) ImGui::SameLine(0, buttonSpacing);
+
         }
 
-        ImGui::Separator();
         style.ItemSpacing = oldSpacing;
+        ImGui::Separator();
 
     }
 

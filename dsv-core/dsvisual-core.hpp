@@ -204,7 +204,6 @@ public:
         // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
         ImGui::Begin(_mName.c_str(), &_mVisible);
         //ImGui::SetNextWindowSize(ImVec2(500, 500));
-        
         // sub-class to impl
         if (ImGui::CollapsingHeader("basic info")) _drawBasicInfoImpl();
         if (ImGui::CollapsingHeader("data visual")) _drawVisualImpl();
@@ -270,7 +269,7 @@ protected:
 void WindowManager::__render() {
 
     // DSVisual Basic Setting
-    ImGui::GetIO().FontGlobalScale = 1.5f;
+    ImGui::GetIO().FontGlobalScale = 1.8f;
     ImGuiStyle& style = ImGui::GetStyle();
     style.WindowMinSize = ImVec2(400, 300);
 
