@@ -336,7 +336,7 @@ void PlatformManager::__windowRender() {
         ImGui::NewFrame();
 
         // ImGui Demo
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
 
         // DSVisual Window
         __mWindowManager.__render();
