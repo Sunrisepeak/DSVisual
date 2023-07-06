@@ -20,3 +20,8 @@ target("dsvisual_array")
     set_kind("binary")
     add_cxxflags("-g")
     add_files("examples/array.cpp")
+
+target("dsvisual_bubble_sort_visual")
+    set_kind("binary")
+    add_cxxflags("-g")
+    add_files("examples/bubble_sort_visual.cpp")

@@ -1,6 +1,8 @@
 #ifndef __ARRAY_HPP__DSVISUAL
 #define __ARRAY_HPP__DSVISUAL
 
+#include <initializer_list>
+
 #include <dstruct.hpp>
 
 #include <dsv-core/dsvisual-core.hpp>
@@ -19,6 +21,15 @@ public: // bigfive
         _mStartIndex = 0;
         _mIteratorPos = -1;
         _mModifiedPos = -1;
+        _mMaxVal = N;
+        _mDataVisualExtend = false;
+    }
+
+    Array(std::initializer_list<T> &&list) : Array() {
+        auto it = begin();
+        for (auto listIt = list.begin(); it != end() && listIt != list.end(); listIt++, it++) {
+            *it = *listIt;
+        }
     }
 
 public: // for user
@@ -26,18 +37,19 @@ public: // for user
         if (index < 0)
             index = N + index;
         _mModifiedPos = index;
+        _animation();
         return DStruct::operator[](index);
     }
 
     T operator[](int index) const {
         if (index < 0)
             index = N + index;
-        _mModifiedPos = index;
+        _mIteratorPos = index;
+        _animation();
         return DStruct::operator[](index);
     }
 
-public:
-    public: // base op
+public: // base op
     size_t size() const {
         return N;
     }
@@ -58,29 +70,31 @@ public:
         return { DStruct::_mC + N, this };
     }
 
+public: // animation
+    void setDataVisualExtend(bool dataVisualExtend) {
+        _mDataVisualExtend = dataVisualExtend;
+    }
+
+
 protected:
     void _updateIterator(const _PrimitiveIterator<T, Array> &it, bool changeFlag = false) {
         _mIteratorPos = dstruct::distance(begin(), it);
-        if (changeFlag) _mModifiedPos = _mIteratorPos;
+        if (changeFlag) { _mModifiedPos = _mIteratorPos; }
         else _mModifiedPos = -1;
+        _animation();
     }
 
-protected: // interface impl
-
-    void _drawBasicInfoImpl() override {
-        ImGui::Text("this: %p", this); ImGui::Separator();
-        ImGui::Text("_mSize: %ld", N); ImGui::Separator();
-        ImGui::Text("_mC Address: %p", this->_mC); ImGui::Separator();
+    void _animation() {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    void _drawVisualImpl() override {
+    void _dataVisualBaseImpl() {
         ImGuiStyle& style = ImGui::GetStyle();
         const float buttonSpacing = 2.0f;
         const float windowWidth = ImGui::GetWindowWidth();
-        float buttonWidth, buttonHeight;
         auto oldSpacing = style.ItemSpacing;
 
-        buttonWidth = buttonHeight = windowWidth / 15;
+        buttonWidth = buttonHeight = windowWidth / 20;
 
         style.ItemSpacing = ImVec2(buttonWidth, buttonHeight);
 
@@ -102,8 +116,6 @@ protected: // interface impl
             if (i == _mModifiedPos) highlight = ImVec4(0.7f, 0.0f, 0.0f, 0.7f);
 
             ImGui::PushStyleColor(ImGuiCol_Button, highlight);
-            //ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
-            //ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8f, 0.0f, 0.0f, 1.0f));
             std::string text = std::to_string(DStruct::operator[](i));
             ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
             if (textSize.x > buttonWidth) buttonWidth = textSize.x;
@@ -115,19 +127,52 @@ protected: // interface impl
         }
 
         style.ItemSpacing = oldSpacing;
-        ImGui::Separator();
-
     }
 
+    void _dataVisualExtendImpl() {
+
+        auto func = [](void *data, int x) -> float {
+            T *arr = static_cast<T *>(data);
+            return arr[x] * 1.0f; 
+        };
+
+        ImGui::PlotHistogram("", func, this->_mC, N, _mStartIndex,
+            NULL, FLT_MAX, FLT_MAX, ImVec2(ImGui::GetWindowWidth(), buttonHeight * 2));
+        ImGui::PlotLines("", func, this->_mC, N, _mStartIndex,
+            NULL, FLT_MAX, FLT_MAX, ImVec2(ImGui::GetWindowWidth(), ImGui::GetWindowHeight() / 4));
+    }
+
+protected: // interface impl
+
+    void _drawBasicInfoImpl() override {
+        ImGui::Text("this: %p", this); ImGui::Separator();
+        ImGui::Text("_mSize: %ld", N); ImGui::Separator();
+        ImGui::Text("_mC Address: %p", this->_mC); ImGui::Separator();
+    }
+
+    void _drawVisualImpl() override {
+        _dataVisualBaseImpl(); ImGui::Separator();
+        if (_mDataVisualExtend)
+            _dataVisualExtendImpl(); ImGui::Separator();
+    }
 
     void _drawControlImpl() override {
         ImGui::SetNextItemWidth(ImGui::GetWindowWidth());
         ImGui::SliderInt("", &_mStartIndex, 0, N - 1, "Start Index %d"); ImGui::Separator();
     }
+
 protected:
+    // base data
+    float _mMaxVal;
+    float buttonWidth, buttonHeight;
+
+    // animation
     int _mModifiedPos;
     int _mIteratorPos;
+
+    // data visual control
     int _mStartIndex;
+    bool _mDataVisualExtend;
 };
 
 }
