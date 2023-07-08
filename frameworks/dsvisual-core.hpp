@@ -21,9 +21,8 @@
 
 namespace dsvisual {
 
-void glfw_error_callback(int error, const char* description) {
-    DSTRUCT_ASSERT(false);
-}
+static void glfw_error_callback(int error, const char* description);
+static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 class Widget;
 class WindowManager {
@@ -66,7 +65,16 @@ std::mutex WindowManager::_mMutex; // TODO: verify/check included to multi-sourc
 /* --------------------------------------------------------------------------------------------------------- */
 
 class PlatformManager {
-
+/*
+    friend void
+    glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+public:
+    struct KeyData {
+        int key;
+        int scancode;
+        int action;
+    };
+*/
 public:
     static PlatformManager & getInstance() {
         static PlatformManager w;
@@ -86,15 +94,22 @@ public:
 /*
     // use unique_lock move auto-lock to out-class (user)
     static std::unique_lock<std::mutex> getAutoLock() {
-        std::unique_lock<std::mutex> _al(getInstance().__mWindowOwnship);
+        std::unique_lock<std::mutex> _al(getInstance().__mPlatformMutex);
         return std::move(_al);
     }
 
-    void setWindowDestroy() {
-        __mWindowExited = true;
+    static KeyData getInputKey() {
+        KeyData kd { -1, -1, -1};
+        {
+            std::unique_lock<std::mutex> _al(getInstance().__mPlatformMutex);
+            if (!getInstance().__mKeyDataQueue.empty()) {
+                kd = getInstance().__mKeyDataQueue.front();
+                getInstance().__mKeyDataQueue.pop();
+            }
+        }
+        return kd;
     }
 */
-
 private:
     PlatformManager();
     PlatformManager(PlatformManager const&)            = delete;
@@ -126,7 +141,7 @@ private: // platform init/deinit: ensure platform resource init/deinit in same t
         
         glfwMakeContextCurrent(__mWindow);
         glfwSwapInterval(1); // Enable vsync
-
+        //glfwSetKeyCallback(__mWindow, dsvisual::glfw_key_callback); // regisater key-callback
 
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
@@ -165,6 +180,8 @@ private:
     WindowManager __mWindowManager;
     bool __mWindowExited;
     std::thread __mRenderThread;
+    //std::mutex __mPlatformMutex;
+    //dstruct::Queue<KeyData> __mKeyDataQueue;
 };
 
 
@@ -356,6 +373,24 @@ void PlatformManager::__windowRender() {
     __platformDeinit();
 }
 
+/* --------------------------------------------------------------------------------------------------------- */
+
+static void glfw_error_callback(int error, const char* description) {
+    DSTRUCT_ASSERT(false);
+}
+
+/*
+static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    PlatformManager::KeyData kd { 0 };
+    if (action == GLFW_PRESS) {
+        kd.key = key;
+        kd.scancode = scancode;
+        kd.action = action;
+        auto _al = PlatformManager::getAutoLock();
+        PlatformManager::getInstance().__mKeyDataQueue.push(kd);
+    }
+}
+*/
 }
 
 #endif

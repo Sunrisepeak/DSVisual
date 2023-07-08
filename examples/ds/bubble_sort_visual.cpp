@@ -7,7 +7,7 @@
 
 constexpr int ARR_SIZE = 100;
 
-void bubble_sort(dsvisual::Array<int, ARR_SIZE> &arr) {
+void bubble_sort(dsvisual::ds::Array<int, ARR_SIZE> &arr) {
     bool exchanged = true;
     for (int i = 0; exchanged && i < arr.size() - 1; i++) {
         exchanged = false;
@@ -23,7 +23,7 @@ void bubble_sort(dsvisual::Array<int, ARR_SIZE> &arr) {
 
 int main() {
 
-    dsvisual::Array<int, ARR_SIZE> arr;
+    dsvisual::ds::Array<int, ARR_SIZE> arr;
 
     arr.setDataVisualExtend(true);
 

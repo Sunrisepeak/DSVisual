@@ -5,9 +5,12 @@
 
 #include <dstruct.hpp>
 
-#include <dsv-core/dsvisual-core.hpp>
+#include <frameworks/dsvisual-core.hpp>
 
 namespace dsvisual {
+
+
+namespace ds {
 
 template <typename T, size_t N>
 class Array : private dstruct::Array<T, N>, public Widget {
@@ -174,6 +177,8 @@ protected:
     int _mStartIndex;
     bool _mDataVisualExtend;
 };
+
+}
 
 }
 
