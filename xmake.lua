@@ -9,6 +9,7 @@ add_includedirs(
 )
 
 add_packages("imgui")
+add_files("dsv-core/dsvisual-core.cpp")
 
 --[[
 target("dsvisual")

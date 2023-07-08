@@ -5,7 +5,8 @@
 
 #include <dstruct.hpp>
 
-#include <dsv-core/dsvisual-core.hpp>
+#include <dsv-core/dsvisual-core.h>
+#include <dsv-core/ds/ds-base.hpp>
 
 namespace dsvisual {
 
