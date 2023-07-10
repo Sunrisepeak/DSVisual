@@ -52,6 +52,7 @@ public:
     // contruct/destory seq for global obj 
     static WindowManager & getWindowManagerInstance();
     static bool windowClosed();
+    static void setRootWindowName(std::string name);
 private:
     PlatformManager();
     PlatformManager(PlatformManager const&)            = delete;
@@ -60,6 +61,7 @@ private:
     PlatformManager& operator=(PlatformManager&&)      = delete;
     ~PlatformManager();
 private: // platform init/deinit: ensure platform resource init/deinit in same thread
+    void __PlatformInitCheckOnlyOnce();
     void __platformInit();
     void __platformDeinit();
 private: // render thread
@@ -77,7 +79,7 @@ private:
 
 class Widget {
 public:
-    Widget(const std::string name = "Widget", bool visible = true);
+    Widget(const std::string name = "Widget", bool visible = true, bool _mFullScreen = false);
     Widget(const Widget&) = delete;
     Widget(Widget&&) = delete; // TODO: to support
     Widget & operator=(const Widget&) = delete;
@@ -94,9 +96,11 @@ protected: // top-down interface
     virtual void _drawBasicInfoImpl() { }
     virtual void _drawVisualImpl() { /* */ }
     virtual void _drawControlImpl() { }
+    virtual void _drawAboutImpl() { }
 protected:
-    bool _mVisible;
     std::string _mName;
+    bool _mVisible;
+    bool _mFullScreen;
 };
 
 }

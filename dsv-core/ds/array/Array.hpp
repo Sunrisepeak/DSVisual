@@ -25,7 +25,6 @@ public: // bigfive
         _mStartIndex = 0;
         _mIteratorPos = -1;
         _mModifiedPos = -1;
-        _mMaxVal = N;
         _mDataVisualExtend = false;
     }
 
@@ -167,7 +166,6 @@ protected: // interface impl
 
 protected:
     // base data
-    float _mMaxVal;
     float buttonWidth, buttonHeight;
 
     // animation

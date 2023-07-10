@@ -84,14 +84,26 @@ WindowManager & PlatformManager::getWindowManagerInstance() {
 }
 
 bool PlatformManager::windowClosed() { // only-read for __mWindow
-    static bool firstAccessFlag = true;
-    while (firstAccessFlag && getInstance().__mWindow == nullptr);
-    firstAccessFlag = false;
+    getInstance().__PlatformInitCheckOnlyOnce();
     if (getInstance().__mWindowExited) return true;
     return glfwWindowShouldClose(getInstance().__mWindow);
 }
 
+void PlatformManager::setRootWindowName(std::string name) {
+    getInstance().__PlatformInitCheckOnlyOnce();
+    glfwSetWindowTitle(getInstance().__mWindow, name.c_str());
+}
+
+void PlatformManager::__PlatformInitCheckOnlyOnce() {
+    // only check once
+    static bool firstAccessFlag = true;
+    while (firstAccessFlag && __mWindow == nullptr);
+    firstAccessFlag = false;
+}
+
 void PlatformManager::__platformInit() {
+
+    if (__mWindow != nullptr) return;
     
     glfwSetErrorCallback(dsvisual::glfw_error_callback);
     
@@ -101,6 +113,8 @@ void PlatformManager::__platformInit() {
     const char* glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    // transparency hint goes before glfwCreateWindow
+    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
     __mWindow = glfwCreateWindow(1280, 720, "DSVisual", nullptr, nullptr);
 
@@ -117,10 +131,6 @@ void PlatformManager::__platformInit() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(__mWindow, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
@@ -128,23 +138,33 @@ void PlatformManager::__platformInit() {
 
 void PlatformManager::__platformDeinit() {
 
-    // Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    if (__mWindow) {
+        // Cleanup
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
 
-    glfwDestroyWindow(__mWindow);
-    glfwTerminate();
+        glfwDestroyWindow(__mWindow);
+        glfwTerminate();
+    }
+    __mWindow = nullptr;
 
 }
 
 // split impl from class-in to class-out, incomplete-type issue for w->render
 void PlatformManager::__windowRender() {
-    
+
     int display_w, display_h;
-    ImVec4 clear_color = ImVec4(0.898f, 1.0f, 0.8f, 1.0f);;
+    ImVec4 clear_color = ImVec4(0.0f, 0.3f, 0.4f, 0.25f);
 
     __platformInit();
+
+    // Setup DSVisual Theme
+    //ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+    ImGui::StyleColorsClassic();
+    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.1f, 0.1f, 0.8f);
+
     while (!__mWindowExited) {
         // 60 fps
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 60 - 10));
@@ -184,7 +204,8 @@ void PlatformManager::__windowRender() {
 
 /* --------------------------------------------------------------------------------------------------------- */
 
-Widget::Widget(const std::string name, bool visible) : _mVisible { visible }, _mName { name } {
+Widget::Widget(const std::string name, bool visible, bool fullScreen) :
+    _mVisible { visible }, _mName { name }, _mFullScreen { fullScreen } {
     PlatformManager::getWindowManagerInstance().addWidget(this);
 }
 
@@ -198,17 +219,31 @@ void Widget::setVisible(bool visible) { _mVisible = visible; }
 void Widget::setName(std::string name) { _mName = name; }
 
 void Widget::draw() {
+    ImGuiWindowFlags windowFlags = 0;
+    bool *pOpen = &_mVisible;
 
     if (_mVisible == false) return;
 
-    // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-    ImGui::Begin(_mName.c_str(), &_mVisible);
-    //ImGui::SetNextWindowSize(ImVec2(500, 500));
-    // sub-class to impl
-    if (ImGui::CollapsingHeader("basic info")) _drawBasicInfoImpl();
-    if (ImGui::CollapsingHeader("data visual")) _drawVisualImpl();
-    if (ImGui::CollapsingHeader("control")) _drawControlImpl();
+    if (_mFullScreen) {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+        {
+            windowFlags |= ImGuiWindowFlags_NoResize;
+            windowFlags |= ImGuiWindowFlags_NoTitleBar;
+            pOpen = nullptr;
+        }
+    }
 
+    ImGui::Begin(_mName.c_str(), &_mVisible, windowFlags);
+    {
+        {// sub-class to impl
+            if (ImGui::CollapsingHeader("basic info", ImGuiTreeNodeFlags_DefaultOpen)) _drawBasicInfoImpl();
+            if (ImGui::CollapsingHeader("data visual", ImGuiTreeNodeFlags_DefaultOpen)) _drawVisualImpl();
+            if (ImGui::CollapsingHeader("control", ImGuiTreeNodeFlags_DefaultOpen)) _drawControlImpl();
+            if (ImGui::CollapsingHeader("about", ImGuiTreeNodeFlags_DefaultOpen)) _drawAboutImpl();
+        }
+    }
     ImGui::End();
 }
 
