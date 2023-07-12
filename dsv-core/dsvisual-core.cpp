@@ -86,15 +86,22 @@ bool PlatformManager::windowClosed() { // only-read for __mWindow
 }
 
 void PlatformManager::setRootWindowName(std::string name) {
-    getInstance().__PlatformInitCheckOnlyOnce();
+    __PlatformInitCheckOnlyOnce();
     glfwSetWindowTitle(getInstance().__mWindow, name.c_str());
+}
+
+void PlatformManager::setRootWindowSize(int width, int height) {
+    __PlatformInitCheckOnlyOnce();
+    glfwSetWindowSize(getInstance().__mWindow, width, height);
 }
 
 void PlatformManager::__PlatformInitCheckOnlyOnce() {
     // only check once
     static bool firstAccessFlag = true;
-    while (firstAccessFlag && __mWindow == nullptr);
-    firstAccessFlag = false;
+    if (firstAccessFlag) {
+        while (getInstance().__mWindow == nullptr);
+        firstAccessFlag = false;
+    }
 }
 
 void PlatformManager::__platformInit() {

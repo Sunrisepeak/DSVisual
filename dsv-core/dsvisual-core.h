@@ -50,6 +50,7 @@ public:
     static WindowManager & getWindowManagerInstance();
     static bool windowClosed();
     static void setRootWindowName(std::string name);
+    static void setRootWindowSize(int width, int height);
 private:
     PlatformManager();
     PlatformManager(PlatformManager const&)            = delete;
@@ -58,7 +59,7 @@ private:
     PlatformManager& operator=(PlatformManager&&)      = delete;
     ~PlatformManager();
 private: // platform init/deinit: ensure platform resource init/deinit in same thread
-    void __PlatformInitCheckOnlyOnce();
+    static void __PlatformInitCheckOnlyOnce();
     void __platformInit();
     void __platformDeinit();
 private: // render thread
