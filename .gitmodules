@@ -1,3 +1,7 @@
-[submodule "DStruct"]
+[submodule "third-party/imgui"]
+	path = third-party/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = v1.88
+[submodule "third-party/DStruct"]
 	path = third-party/DStruct
 	url = https://github.com/Sunrisepeak/DStruct.git
