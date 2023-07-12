@@ -148,7 +148,7 @@ protected:
 protected: // interface impl
 
     void _drawBasicInfoImpl() override {
-        ImGui::Text("this: %p", this); ImGui::Separator();
+        //ImGui::Text("this: %p", this); ImGui::Separator();
         ImGui::Text("_mSize: %ld", N); ImGui::Separator();
         ImGui::Text("_mC Address: %p", this->_mC); ImGui::Separator();
     }

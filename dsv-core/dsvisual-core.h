@@ -19,9 +19,6 @@
 
 namespace dsvisual {
 
-static void glfw_error_callback(int error, const char* description);
-static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
 class Widget;
 class WindowManager {
     friend class PlatformManager;
@@ -102,6 +99,9 @@ protected:
     bool _mVisible;
     bool _mFullScreen;
 };
+
+static void glfw_error_callback(int error, const char* description);
+static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 }
 

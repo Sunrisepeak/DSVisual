@@ -1,14 +1,10 @@
 #include "dsvisual-core.h"
 
-//#include <iostream>
+#include <cstdio>
 #include <typeinfo>
 #include <chrono>
 
 namespace dsvisual {
-
-static void glfw_error_callback(int error, const char* description) {
-    DSTRUCT_ASSERT(false);
-}
 
 /* --------------------------------------------------------------------------------------------------------- */
 
@@ -107,7 +103,8 @@ void PlatformManager::__platformInit() {
     
     glfwSetErrorCallback(dsvisual::glfw_error_callback);
     
-    DSTRUCT_ASSERT(glfwInit());
+    int ret = glfwInit();
+    DSTRUCT_ASSERT(ret == GLFW_TRUE);
 
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
@@ -245,6 +242,13 @@ void Widget::draw() {
         }
     }
     ImGui::End();
+}
+
+/* --------------------------------------------------------------------------------------------------------- */
+
+static void glfw_error_callback(int error, const char* description) {
+    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+    DSTRUCT_ASSERT(false);
 }
 
 }
