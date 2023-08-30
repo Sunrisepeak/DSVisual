@@ -5,6 +5,7 @@
 #include <dsv-core/dsvisual-core.h>
 // ds
 #include <dsv-core/ds/array/Array.hpp>
+#include <dsv-core/ds/linked-list/EmbeddedList.hpp>
 
 namespace dsvisual {
 
