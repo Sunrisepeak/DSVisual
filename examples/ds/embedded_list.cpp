@@ -23,16 +23,14 @@ int main() {
             if (i == 4) {
                 midNodePtr = currNodePtr;
             }
-            ds::EmbeddedList<MyNode>::add(headNodePtr, currNodePtr, &eList, 300);
+            ds::EmbeddedList<MyNode>::add(headNodePtr, currNodePtr, &eList, 100);
         }
 
         // mid-insert
         for (int i = 0; i < 4; i++) {
             auto currNodePtr = new MyNode();
-            ds::EmbeddedList<MyNode>::add(midNodePtr, currNodePtr, &eList, 200);
+            ds::EmbeddedList<MyNode>::add(midNodePtr, currNodePtr, &eList, 100);
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
         // release
         while (!ds::EmbeddedList<MyNode>::empty(headNodePtr)) {

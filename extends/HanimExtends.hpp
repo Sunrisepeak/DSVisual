@@ -28,7 +28,7 @@ struct InsertAnim : public hanim::ComposeAnim {
         setFrameTrackIndex(2 * subF);
 
         hanim::ComposeAnim::move(-1, y / 2 + 1, -1, y)
-            .setFrameNums(50);
+            .setFrameNums(subF);
         setFrameTrackIndex(3 * subF); // TODO/Bug?: check finished status
 
         setFrameNums(frameNumbers);

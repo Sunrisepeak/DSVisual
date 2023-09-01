@@ -56,7 +56,7 @@ public: // DS interface
     }
 public:
     void add(NodeType *prev, NodeType *curr, unsigned int animFrameNumbers = 0) {
-        hanim::object::dsvisual::Node currNode(_mNodeVec.back().id() + 5);
+        hanim::object::dsvisual::Node currNode(_mNodeVec.back().id() + 5 * 100);
         if (animFrameNumbers > 10) {
 
             int prevNodeIndex = find(prev);
@@ -65,22 +65,23 @@ public:
             float currNodePosX = 50 + _mNodePosXOffset * currNodeIndex;
 
             // hanimate
-            printf("hanim: %f\n", _mNodePosY);
             auto animTree = hanim::animate::dsvisual::InsertAnim(_mNodePosY, _mNodePosXOffset, animFrameNumbers);
 
             // hobject
             auto hObj = hanim::HObject(
                 [ & ](int type, const hanim::IAFrame &frame) {
-                    // crash imnodes : Assertion `node_idx_depth_order.Size == GImNodes->NodeIdxSubmissionOrder.Size' failed.
-                    // currNode.render();
                     switch(type) {
                         case hanim::InterpolationAnim::MOVE:
                             if (frame.data[1] == -1) { // move x: list
                                 _updateListPos(nextNodeIndex, frame.data[0]);
                             } else if (frame.data[0] == -1) { // move y
-                                printf("%d: %p - %f, %f\n", animTree.getCurrentFrame(), &_mAnimNode, currNodePosX, frame.data[1]);
                                 _mAnimNode.setPos(currNodePosX, frame.data[1]);
                                 _mAnimNode.setUpdatePos(true);
+                                if (frame.data[1] > _mNodePosY / 2 && nextNodeIndex < _mNodeVec.size()) {
+                                    hanim::object::dsvisual::Node::connect(_mNodeVec[prevNodeIndex], _mAnimNode);
+                                    hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[nextNodeIndex]);
+                                    hanim::object::dsvisual::Node::disconnect(_mNodeVec[prevNodeIndex], _mNodeVec[nextNodeIndex]);
+                                }
                             }
                             break;
                         default: // link anim
@@ -95,16 +96,16 @@ public:
                 }
             );
 
+            _mAnimNode.setId(0x123); // enable
             _setAnimate(animTree, hObj);
-
         }
 
         {   // insert and update
             std::lock_guard<std::mutex> _al(_mUpdateListMutex);
-            //float nodePosX = 50 + _mNodePosXOffset * _mNodeVec.size();
             _mNodeVec.push_back(currNode);
             NodeType::add(prev, curr);
             _updateListPos();
+            _mAnimNode.setId(-1); // disable
         }
     }
 
@@ -113,7 +114,6 @@ public:
         int ansPos = 1;
         auto linkPtr = _mHeadNode.link.next;
         while (linkPtr != to_link(nPtr) && linkPtr != to_link(&_mHeadNode)) {
-            printf("%d\n", ansPos);
             linkPtr = linkPtr->next;
             ansPos++;
         }
@@ -165,8 +165,8 @@ protected: // top-down interface
 
                     _mNodeVec[index].setUpdatePos(false);
 
-                    if (index > 1)
-                        hanim::object::dsvisual::Node::connect(prev, _mNodeVec[index], true);
+                    if (index < _mNodeVec.size() - 1)
+                        hanim::object::dsvisual::Node::connect(prev, _mNodeVec[index]);
 
                     prev = _mNodeVec[index];
                 }
@@ -174,7 +174,8 @@ protected: // top-down interface
 
             _playAnimate();
 
-            _mAnimNode.render();
+            if (_mAnimNode.id() > 0)
+                _mAnimNode.render();
 
         ImNodes::MiniMap();
         ImNodes::EndNodeEditor();
