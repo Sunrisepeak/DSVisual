@@ -5,11 +5,28 @@ set_project("dsvisual")
 set_languages("cxx17")
 
 -- config third-party libs
+
+---- imgui
 add_requires("imgui 1.88", {configs = {glfw_opengl3 = true}})
 add_packages("imgui")
-add_includedirs("third-party/DStruct") -- DStruct: data struct library
-add_includedirs("third-party/Hanim") -- hanim: animate framework
-add_includedirs("third-party/imnodes") -- imgui node
+
+---- DStruct: data struct library
+add_includedirs("third-party/DStruct")
+
+---- hanim: animate framework
+add_includedirs("third-party/Hanim")
+
+---- XRecorder: OpenGLRecorder
+add_includedirs("third-party/XRecorder")
+if is_host("linux") then
+    add_includedirs("/usr/include/opencv4")
+    add_links("opencv_core")
+    add_links("opencv_highgui")
+    add_links("opencv_imgproc", "opencv_videoio", "opencv_imgcodecs")
+end
+
+-- imgui node
+add_includedirs("third-party/imnodes")
 add_files("third-party/imnodes/imnodes.cpp")
 
 -- config dsvisual

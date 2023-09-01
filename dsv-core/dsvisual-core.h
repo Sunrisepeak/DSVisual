@@ -8,9 +8,10 @@
 
 // DStruct
 #include <dstruct.hpp>
-
 // Hanim
 #include <Hanim.hpp>
+// XRecorder
+#include <OpenGLRecorder.hpp>
 
 // imgui: glfw + opengl3
 #include "imgui.h"
@@ -68,6 +69,9 @@ public:
     static void waitWindowClosed(unsigned int ms = 100);
     static void setRootWindowName(std::string name);
     static void setRootWindowSize(int width, int height);
+    static void setWindowFPS(int fps = 60);
+    static void setRecorder(bool enable = true);
+    static void setRenderCallback(std::function<void ()> cb);
 private:
     PlatformManager();
     PlatformManager(PlatformManager const&)            = delete;
@@ -82,10 +86,13 @@ private: // platform init/deinit: ensure platform resource init/deinit in same t
 private: // render thread
     void __windowRender();
 private:
+    int __mFPS;
+    bool __mXRecorderEnable;
     GLFWwindow *__mWindow;
     WindowManager __mWindowManager;
     bool __mWindowExited;
     std::thread __mRenderThread;
+    std::function<void ()> __mRenderCallback;
 };
 
 
@@ -116,7 +123,7 @@ protected: // top-down interface
     virtual void _drawAboutImpl() { }
 protected:
     void _setAnimate(hanim::HAnimate &anim, hanim::HObject &hObj);
-    void _playAnimate();
+    bool _playAnimate();
 protected:
     std::string _mName;
     float _mX, _mY;

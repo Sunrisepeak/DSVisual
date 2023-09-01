@@ -4,45 +4,42 @@
 
 #include <dsvisual.hpp>
 
-/*
-https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/include/linux/types.h
-https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/include/linux/list.h
-
-// Note: compiler buildin __builtin_offsetof
-#define offsetof(type, member) \
-    (int((type*)0)->m)
-
-struct List {
-    List *next;
-};
-
-struct List {
-    List *prev, *next;
-};
-
-struct ListNode {
-    List *next;
-    Type data;
-}
-
-*/
 using namespace dsvisual;
 
 using MyNode = dstruct::EListNode<ds::Array<int, 4>>;
 
 int main() {
-
+    //PlatformManager::setWindowFPS(60);
+    PlatformManager::setRecorder();
     ds::EmbeddedList<MyNode> eList;
-    //eList.setPos(100, 100);
-    //eList.setSize(600, 600);
     eList.setVisible(true);
+    { // data struct visualization
+        ds::EmbeddedList<MyNode>::init(eList.headNodePtr());
+        MyNode *headNodePtr = eList.headNodePtr();
+        MyNode *midNodePtr = nullptr;
+        // head-insert
+        for (int i = 0; i < 6; i++) {
+            auto currNodePtr = new MyNode();
+            if (i == 4) {
+                midNodePtr = currNodePtr;
+            }
+            ds::EmbeddedList<MyNode>::add(headNodePtr, currNodePtr, &eList, 300);
+        }
 
-    ds::EmbeddedList<MyNode>::init(eList.headNodePtr());
+        // mid-insert
+        for (int i = 0; i < 4; i++) {
+            auto currNodePtr = new MyNode();
+            ds::EmbeddedList<MyNode>::add(midNodePtr, currNodePtr, &eList, 200);
+        }
 
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    for (int i = 0; i < 10; i++) {
-        auto nodePtr = new MyNode();
-        ds::EmbeddedList<MyNode>::add(eList.headNodePtr(), nodePtr, &eList);
+        // release
+        while (!ds::EmbeddedList<MyNode>::empty(headNodePtr)) {
+            auto firstNodePtr = MyNode::to_node(headNodePtr->link.next);
+            ds::EmbeddedList<MyNode>::del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 1000);
+            delete firstNodePtr;
+        }
     }
 
     PlatformManager::waitWindowClosed();

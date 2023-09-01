@@ -4,6 +4,7 @@
 #include <dstruct.hpp>
 #include <dsv-core/dsvisual-core.h>
 
+#include <extends/HanimExtends.hpp>
 #include <extends/ImguiExtends.hpp>
 
 namespace dsvisual {
@@ -12,111 +13,111 @@ namespace ds {
 template <typename NodeType>
 class EmbeddedList : public Widget {
 public:
-    EmbeddedList() {
+    EmbeddedList() : _mUpdateListMutex {}, _mAnimNode{0x123}, _mNodeVec() {
         _mName = "EmbeddedList - " + std::to_string((uint64_t)this);
-        _mNodeIdVec.push_back((uint64_t)this);
+
+        // DSVisual
         _mDataVisible = false;
         _mFullScreen = true;
+
+        // Hanim
+        hanim::object::dsvisual::Node node(0x1234 + ((uint64_t)this % 0x100) * 0x1234);
+        node.setPos(50, 200);
+        _mNodeVec.push_back(node);
+        _mNodePosXOffset = 200;
         _mNodePosY = 200;
-        //init(&headNode);
     }
 
 public: // DS interface
-    static void init(NodeType *list, bool animFlag = true) {
+    static void init(NodeType *list) {
         NodeType::init(list);
     }
 
-    static bool empty(NodeType *list, bool animFlag = true) {
+    static bool empty(NodeType *list) {
         return NodeType::empty(list);
     }
 
-    static void add(NodeType *prev, NodeType *curr, EmbeddedList *eListPtr = nullptr) {
-        if (nullptr != eListPtr) {
-            // compute insert pos
-            int idIndex = 0 + 1 /*head node*/;
-            auto linkPtr = to_link(eListPtr->headNodePtr()); // headNode's link
-            while (linkPtr != to_link(prev)) {
+    static void add(NodeType *prev, NodeType *curr, EmbeddedList *eListPtr, int frameNumbers = 60) {
+        eListPtr->add(prev, curr, frameNumbers);
+    }
 
-                assert(linkPtr == to_link(eListPtr->headNodePtr()));
+    static void del(NodeType *prev, NodeType *curr, int ms = 500) {
+        // TODO: Animate
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        NodeType::del(prev, curr);
+    }
 
-                idIndex++;
-                linkPtr = linkPtr->next;
-            }
+    static NodeType * to_node(typename NodeType::LinkType *link) {
+        return NodeType::to_node(link);
+    }
 
-            printf("add: %d\n", idIndex);
+    static typename NodeType::LinkType * to_link(NodeType *node) {
+        return NodeType::to_link(node);
+    }
+public:
+    void add(NodeType *prev, NodeType *curr, unsigned int animFrameNumbers = 0) {
+        hanim::object::dsvisual::Node currNode(_mNodeVec.back().id() + 5);
+        if (animFrameNumbers > 10) {
 
-            int prevIdIndex = idIndex - 1;
-            int newNodeId = eListPtr->_mNodeIdVec.back() + 5;
+            int prevNodeIndex = find(prev);
+            int nextNodeIndex = prevNodeIndex + 1;
+            int currNodeIndex = nextNodeIndex;
+            float currNodePosX = 50 + _mNodePosXOffset * currNodeIndex;
 
             // hanimate
-            auto animTree = hanim::ComposeAnim();
-
-            auto anim1 = hanim::move(0, -1, 100, -1, 100);
-            animTree.addAnim(anim1, 0);
-            auto anim2 = hanim::move(-1, 0, -1, eListPtr->_mNodePosY, 100);
-            animTree.addAnim(anim2, anim1.getFrameNums());
-            auto anim3 = hanim::scale(0, 1, 300);
-            animTree.addAnim(anim3, anim1.getFrameNums() + anim2.getFrameNums());
-
-            animTree.setFrameNums(anim1.getFrameNums() + anim2.getFrameNums() + anim3.getFrameNums());
+            printf("hanim: %f\n", _mNodePosY);
+            auto animTree = hanim::animate::dsvisual::InsertAnim(_mNodePosY, _mNodePosXOffset, animFrameNumbers);
 
             // hobject
             auto hObj = hanim::HObject(
                 [ & ](int type, const hanim::IAFrame &frame) {
-                    auto node = DLNode(newNodeId);
-                    auto nodeWidth = ImNodes::GetNodeDimensions(newNodeId).x;
-
-                    float newNodePosX = 50 + (nodeWidth + 100) * idIndex;
-                    //printf("frame: %f, %f\n", frame.data[0], frame.data[1]);
-
+                    // crash imnodes : Assertion `node_idx_depth_order.Size == GImNodes->NodeIdxSubmissionOrder.Size' failed.
+                    // currNode.render();
                     switch(type) {
                         case hanim::InterpolationAnim::MOVE:
-                            if (animTree.getCurrentFrame() < anim1.getFrameNums()) {
-                                for (int i = idIndex; i < eListPtr->_mNodeIdVec.size(); i++) {
-                                    int nodePosX = 50 + (nodeWidth + 100) * i + frame.data[0];
-                                    ImNodes::SetNodeEditorSpacePos(eListPtr->_mNodeIdVec[i], {nodePosX, eListPtr->_mNodePosY});
-                                }
-                            } else if (animTree.getCurrentFrame() <= anim1.getFrameNums() + anim2.getFrameNums()) {
-                                ImNodes::SetNodeEditorSpacePos(node.id(), {newNodePosX, frame.data[1]});
+                            if (frame.data[1] == -1) { // move x: list
+                                _updateListPos(nextNodeIndex, frame.data[0]);
+                            } else if (frame.data[0] == -1) { // move y
+                                printf("%d: %p - %f, %f\n", animTree.getCurrentFrame(), &_mAnimNode, currNodePosX, frame.data[1]);
+                                _mAnimNode.setPos(currNodePosX, frame.data[1]);
+                                _mAnimNode.setUpdatePos(true);
                             }
                             break;
-                        case hanim::InterpolationAnim::SCALE:
-                            ImNodes::Link(node.id() + 3, node.id() + 1, prevIdIndex + 2);
-                            if (frame.data[0] > 0.5)
-                                ImNodes::Link(prevIdIndex + 4, prevIdIndex + 2, node.id() + 1);
-                            break;
-                    }
-
-                    if (type == -1) { // anim end
-                        // insert
-                        eListPtr->_mNodeIdVec.push_back(newNodeId); // only need to push_back
-                        NodeType::add(prev, curr);
-                        for (int i = idIndex; i < eListPtr->_mNodeIdVec.size(); i++) { // update node pos
-                            int nodePosX = 50 + (nodeWidth + 100) * i;
-                            ImNodes::SetNodeEditorSpacePos(eListPtr->_mNodeIdVec[i], {nodePosX, eListPtr->_mNodePosY});
-                        }
+                        default: // link anim
+                            if (nextNodeIndex < _mNodeVec.size()) {
+                                hanim::object::dsvisual::Node::connect(_mNodeVec[prevNodeIndex], _mAnimNode);
+                                hanim::object::dsvisual::Node::disconnect(_mNodeVec[prevNodeIndex], _mNodeVec[nextNodeIndex]);
+                                if (frame.data[0] > 0.5) {
+                                    hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[nextNodeIndex]);
+                                }
+                            }
                     }
                 }
             );
 
-            eListPtr->_setAnimate(animTree, hObj);
+            _setAnimate(animTree, hObj);
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        } else {
+        }
+
+        {   // insert and update
+            std::lock_guard<std::mutex> _al(_mUpdateListMutex);
+            //float nodePosX = 50 + _mNodePosXOffset * _mNodeVec.size();
+            _mNodeVec.push_back(currNode);
             NodeType::add(prev, curr);
+            _updateListPos();
         }
     }
 
-    static void del(NodeType *prev, NodeType *curr, bool animFlag = true) {
-        NodeType::del(prev, curr);
-    }
-
-    static NodeType * to_node(typename NodeType::LinkType *link, bool animFlag = true) {
-        return NodeType::to_node(link);
-    }
-
-    static typename NodeType::LinkType * to_link(NodeType *node, bool animFlag = true) {
-        return NodeType::to_link(node);
+    int find(NodeType *nPtr) {
+        if (nPtr == &_mHeadNode) return 0;
+        int ansPos = 1;
+        auto linkPtr = _mHeadNode.link.next;
+        while (linkPtr != to_link(nPtr) && linkPtr != to_link(&_mHeadNode)) {
+            printf("%d\n", ansPos);
+            linkPtr = linkPtr->next;
+            ansPos++;
+        }
+        return ansPos;
     }
 public:
     NodeType * headNodePtr() {
@@ -125,6 +126,7 @@ public:
 
 protected:
     NodeType _mHeadNode;
+    std::mutex _mUpdateListMutex;
 
 /* -----------------------------------------DSVisual-------------------------------------------- */
 
@@ -137,31 +139,42 @@ protected: // top-down interface
     virtual void _drawVisualImpl() override {
         _mNodePosY = ImGui::GetWindowHeight() / 3;
         ImNodes::BeginNodeEditor();
-        {
-            auto prev = DLNode(_mNodeIdVec[0]);
-            int index = 1;
-            for (auto it = headNodePtr()->link.next; it != to_link(headNodePtr()); it = it->next, index++) {
-                auto curr = DLNode(
-                    _mNodeIdVec[index], -1, -1,
-                    [&] {
-                        if (_mDataVisible) {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.0f));
-                            if (ImGui::Button("Data", {0, 100})) {
-                                auto &data = to_node(it)->data;
-                                bool visible = data.getVisible();
-                                data.setVisible(!visible);
-                            }
-                            ImGui::PopStyleColor();
-                        }
-                    }
-                );
-                ImNodes::Link(prev.linkIdR(), prev.outputId(), curr.inputId());
-                ImNodes::Link(curr.linkIdL(), curr.inputId(), prev.outputId());
-                prev = curr;
-            }
-        }
+            // Head Node
+            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, IM_COL32(255, 0, 0, 100));
+            _mNodeVec[0].render();
+            ImNodes::PopColorStyle();
 
-        _playAnimate();
+            int index = 1;
+            auto prev = _mNodeVec[0];
+            {
+                std::lock_guard<std::mutex> _al(_mUpdateListMutex);
+                for (auto it = headNodePtr()->link.next; it != to_link(headNodePtr()); it = it->next, index++) {
+                    _mNodeVec[index].render(
+                        [&] {
+                            if (_mDataVisible) {
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.0f));
+                                if (ImGui::Button("Data", {0, 100})) {
+                                    auto &data = to_node(it)->data;
+                                    bool visible = data.getVisible();
+                                    data.setVisible(!visible);
+                                }
+                                ImGui::PopStyleColor();
+                            }
+                        }
+                    );
+
+                    _mNodeVec[index].setUpdatePos(false);
+
+                    if (index > 1)
+                        hanim::object::dsvisual::Node::connect(prev, _mNodeVec[index], true);
+
+                    prev = _mNodeVec[index];
+                }
+            }
+
+            _playAnimate();
+
+            _mAnimNode.render();
 
         ImNodes::MiniMap();
         ImNodes::EndNodeEditor();
@@ -182,9 +195,20 @@ protected: // top-down interface
     virtual void _drawAboutImpl() override { }
 
 protected:
+    void _updateListPos(int startIndex = 1, float offset = 0) {
+        for (int i = startIndex < 1 ? 1 : startIndex; i < _mNodeVec.size(); i++) {
+            float nodePosX = 50 + _mNodePosXOffset * i + offset;
+            _mNodeVec[i].setPos(nodePosX, _mNodePosY);
+            _mNodeVec[i].setUpdatePos(true);
+        }
+    }
+
+protected:
     bool _mDataVisible;
+    float _mNodePosXOffset;
     float _mNodePosY;
-    dstruct::Vector<int> _mNodeIdVec;
+    hanim::object::dsvisual::Node _mAnimNode;
+    dstruct::Vector<hanim::object::dsvisual::Node> _mNodeVec;
 };
 
 }

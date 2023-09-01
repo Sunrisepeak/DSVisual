@@ -57,8 +57,14 @@ void WindowManager::__render() {
 
 /* --------------------------------------------------------------------------------------------------------- */
 
-PlatformManager::PlatformManager() : __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
+PlatformManager::PlatformManager() : __mFPS { 60 }, __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
     //__platformInit(); // platform resource cann't alloc in twice thread
+    __mXRecorderEnable = false;
+    __mRenderCallback = [](){
+        static xrecorder::OpenGLRecorder<1920, 1080, 60> dsvRecorder("dsvisual-core");
+        dsvRecorder.captureFrameData();
+        dsvRecorder.saveToVideo();
+    };
     __mRenderThread = std::move(std::thread(&PlatformManager::__windowRender, this));
 }
 
@@ -98,6 +104,20 @@ void PlatformManager::setRootWindowName(std::string name) {
 void PlatformManager::setRootWindowSize(int width, int height) {
     __PlatformInitCheckOnlyOnce();
     glfwSetWindowSize(getInstance().__mWindow, width, height);
+}
+
+void PlatformManager::setWindowFPS(int fps) {
+    if (fps < 0 || fps > 1000)
+        fps = 60;
+    getInstance().__mFPS = fps;
+}
+
+void PlatformManager::setRecorder(bool enable) {
+    getInstance().__mXRecorderEnable = enable;
+}
+
+void PlatformManager::setRenderCallback(std::function<void ()> cb) {
+    getInstance().__mRenderCallback = cb;
 }
 
 void PlatformManager::__PlatformInitCheckOnlyOnce() {
@@ -197,7 +217,7 @@ void PlatformManager::__windowRender() {
 
     while (!__mWindowExited) {
         // 60 fps
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 60 - 10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / __mFPS));
 
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -224,6 +244,8 @@ void PlatformManager::__windowRender() {
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        __mRenderCallback();
 
         glfwSwapBuffers(__mWindow);
 
@@ -283,12 +305,16 @@ void Widget::_setAnimate(hanim::HAnimate &anim, hanim::HObject &hObj) {
     }
 }
 
-void Widget::_playAnimate() {
+bool Widget::_playAnimate() {
     std::lock_guard<std::mutex> _al(__mHanimMutex);
     if (__mAnimPtr != nullptr && __mHObjPtr != nullptr) {
-        if (__mAnimPtr->status() != hanim::HAnimate::Status::Finished)
+        if (__mAnimPtr->status() != hanim::HAnimate::Status::Finished) {
             hanim::HEngine::PlayFrame(*__mAnimPtr, *__mHObjPtr);
+            return true;
+        }
     }
+
+    return false;
 }
 
 void Widget::draw() {
