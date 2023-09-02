@@ -17,30 +17,6 @@ struct LNodeHelper {
    static int linkIdR(int id) { return id + 4; }
 };
 
-static int DLNode(int nodeId, std::function<void ()> drawData = nullptr, float x = -1, float y = -1, bool updatePos = true) {
-    ImNodes::BeginNode(nodeId);
-        ImGui::Button("prev");
-        ImNodes::BeginInputAttribute(LNodeHelper::inputId(nodeId));
-        ImNodes::EndInputAttribute();
-        ImGui::SameLine();
-        ImNodes::BeginOutputAttribute(LNodeHelper::outputId(nodeId));
-        ImNodes::EndOutputAttribute();
-        ImGui::Button("next");
-
-        if (drawData) drawData();
-        ImNodes::SetNodeDraggable(nodeId, true);
-        if (updatePos && x >= 0 && y >= 0)
-            ImNodes::SetNodeEditorSpacePos(nodeId, {x, y});
-    ImNodes::EndNode();
-
-    return nodeId;
-}
-
-
-static void Link(const int id, const int start_attr_id, const int end_attr_id, bool connected = true) {
-
-}
-
 static void DrawArrowedLine(const ImVec2& start, const ImVec2& end) {
     ImGui::GetWindowDrawList()->AddLine(start, end, IM_COL32(255, 0, 0, 255), 2.0f);
 
