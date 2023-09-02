@@ -26,19 +26,19 @@ int main() {
             if (i == 4) {
                 midNodePtr = currNodePtr;
             }
-            eList.add(headNodePtr, currNodePtr, 100);
+            eList.add(headNodePtr, currNodePtr, 200);
         }
 
         // mid-insert
         for (int i = 0; i < 4; i++) {
             auto currNodePtr = new MyNode();
-            eList.add(midNodePtr, currNodePtr, 100);
+            eList.add(midNodePtr, currNodePtr, 200);
         }
 
         // release
         while (!ds::EmbeddedList<MyNode>::empty(headNodePtr)) {
             auto firstNodePtr = MyNode::to_node(headNodePtr->link.next);
-            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 100);
+            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 1000);
             delete firstNodePtr;
         }
     }

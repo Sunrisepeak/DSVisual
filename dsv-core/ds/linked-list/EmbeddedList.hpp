@@ -29,6 +29,9 @@ public:
         _mNodePosXOffset = 200;
         _mNodePosY = 250;
         _mAnimNode.setColor(255, 255, 0);
+
+        // TODO: Workaround
+        _mConnectIssueWorkaround = false;
     }
 
 public: // DS interface
@@ -98,6 +101,7 @@ public:
             );
 
             _setAnimate(animTree, hObj);
+            _mConnectIssueWorkaround = true;
         }
 
         {   // insert and update
@@ -171,14 +175,21 @@ protected: // top-down interface
                     );
 
                     _mNodeVec[i].setUpdatePos(false);
-                    hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i], i < _mNodeVec.size() - 1 ? 0 : 1);
+                    if (i < _mNodeVec.size() - 1) {// TODO: workaround connect issue
+                        hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
+                    } else if (i == _mNodeVec.size() - 1) {
+                        if (!_mConnectIssueWorkaround)
+                            hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
+                        else
+                            _mConnectIssueWorkaround = false;
+                    }
                     prevIndex = i;
                 }
 
-                //assert(it == to_link(&_mHeadNode));
+                assert(it == to_link(&_mHeadNode));
             }
 
-            if(_playAnimate()) {
+            if (_playAnimate()) {
                 _mAnimNode.render();
             }
 
@@ -213,6 +224,7 @@ protected:
     bool _mDataVisible;
     float _mNodePosXOffset;
     float _mNodePosY;
+    bool _mConnectIssueWorkaround; // TODO; fix the issue
     hanim::object::dsvisual::Node _mAnimNode; // avoid render crash, details - dsvisual-issue1
     dstruct::Vector<hanim::object::dsvisual::Node> _mNodeVec;
 };
