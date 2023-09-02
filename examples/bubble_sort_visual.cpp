@@ -25,6 +25,7 @@ int main() {
 
     dsvisual::ds::Array<int, ARR_SIZE> arr;
 
+    arr.setVisible(true);
     arr.setDataVisualExtend(true);
 
 {// test: bad data

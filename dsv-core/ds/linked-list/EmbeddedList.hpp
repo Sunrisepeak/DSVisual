@@ -175,6 +175,7 @@ protected: // top-down interface
                     );
 
                     _mNodeVec[i].setUpdatePos(false);
+
                     if (i < _mNodeVec.size() - 1) {// TODO: workaround connect issue
                         hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
                     } else if (i == _mNodeVec.size() - 1) {

@@ -10,9 +10,12 @@ using MyNode = dstruct::EListNode<ds::Array<int, 4>>;
 
 int main() {
     //PlatformManager::setWindowFPS(60);
-    PlatformManager::setRecorder();
+    //PlatformManager::setRecorder();
+
     ds::EmbeddedList<MyNode> eList;
+
     eList.setVisible(true);
+
     { // data struct visualization
         ds::EmbeddedList<MyNode>::init(eList.headNodePtr());
         MyNode *headNodePtr = eList.headNodePtr();

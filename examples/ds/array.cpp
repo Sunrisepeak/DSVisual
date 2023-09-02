@@ -41,7 +41,7 @@ int main() {
 {// test: track iterator
 
     dsvisual::ds::Array<int, 10> arr;
-    arr.setVisible(true);arr.setVisible(true);
+    arr.setVisible(true);
     for (auto it = arr.begin(); it != arr.end(); it++) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
