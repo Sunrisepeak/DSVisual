@@ -245,7 +245,8 @@ void PlatformManager::__windowRender() {
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        __mRenderCallback();
+        if (__mXRecorderEnable)
+            __mRenderCallback();
 
         glfwSwapBuffers(__mWindow);
 
@@ -295,7 +296,7 @@ void Widget::_setAnimate(hanim::HAnimate &anim, hanim::HObject &hObj) {
         anim.status() != hanim::HAnimate::Status::Finished &&
         !PlatformManager::windowClosed()
     ) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
     }
 
     {

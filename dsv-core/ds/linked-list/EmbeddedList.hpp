@@ -23,9 +23,12 @@ public:
         // Hanim
         hanim::object::dsvisual::Node node(0x1234 + ((uint64_t)this % 0x100) * 0x1234);
         node.setPos(50, 200);
+        node.setColor(255, 0, 0);
+        node.setAlpha(255);
         _mNodeVec.push_back(node);
         _mNodePosXOffset = 200;
-        _mNodePosY = 200;
+        _mNodePosY = 250;
+        _mAnimNode.setColor(255, 255, 0);
     }
 
 public: // DS interface
@@ -37,16 +40,6 @@ public: // DS interface
         return NodeType::empty(list);
     }
 
-    static void add(NodeType *prev, NodeType *curr, EmbeddedList *eListPtr, int frameNumbers = 60) {
-        eListPtr->add(prev, curr, frameNumbers);
-    }
-
-    static void del(NodeType *prev, NodeType *curr, int ms = 500) {
-        // TODO: Animate
-        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-        NodeType::del(prev, curr);
-    }
-
     static NodeType * to_node(typename NodeType::LinkType *link) {
         return NodeType::to_node(link);
     }
@@ -56,9 +49,7 @@ public: // DS interface
     }
 public:
     void add(NodeType *prev, NodeType *curr, unsigned int animFrameNumbers = 0) {
-        hanim::object::dsvisual::Node currNode(_mNodeVec.back().id() + 5 * 100);
-        if (animFrameNumbers > 10) {
-
+        if (animFrameNumbers > 5) {
             int prevNodeIndex = find(prev);
             int nextNodeIndex = prevNodeIndex + 1;
             int currNodeIndex = nextNodeIndex;
@@ -77,36 +68,54 @@ public:
                             } else if (frame.data[0] == -1) { // move y
                                 _mAnimNode.setPos(currNodePosX, frame.data[1]);
                                 _mAnimNode.setUpdatePos(true);
-                                if (frame.data[1] > _mNodePosY / 2 && nextNodeIndex < _mNodeVec.size()) {
-                                    hanim::object::dsvisual::Node::connect(_mNodeVec[prevNodeIndex], _mAnimNode);
-                                    hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[nextNodeIndex]);
-                                    hanim::object::dsvisual::Node::disconnect(_mNodeVec[prevNodeIndex], _mNodeVec[nextNodeIndex]);
+                                if (frame.data[1] > _mNodePosY / 2 + 1 && nextNodeIndex < _mNodeVec.size()) {
+                                    hanim::object::dsvisual::Node::connect(_mNodeVec[prevNodeIndex], _mAnimNode, -1);
+                                    if (nextNodeIndex < _mNodeVec.size()) {
+                                        hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[nextNodeIndex], 1);
+                                        hanim::object::dsvisual::Node::disconnect(_mNodeVec[prevNodeIndex], _mNodeVec[nextNodeIndex]);
+                                    }
                                 }
                             }
                             break;
-                        default: // link anim
-                            if (nextNodeIndex < _mNodeVec.size()) {
-                                hanim::object::dsvisual::Node::connect(_mNodeVec[prevNodeIndex], _mAnimNode);
+                        /*
+                        case hanim::InterpolationAnim::GRADIENT:
+                            _mAnimNode.setColor(frame.data[0], frame.data[1], frame.data[2]);
+                            break;
+                        */
+                        case hanim::InterpolationAnim::ALPHA:
+                            _mAnimNode.setAlpha(frame.data[0]);
+                            break;
+                        case hanim::InterpolationAnim::SCALE: // link anim
+                            hanim::object::dsvisual::Node::connect(_mNodeVec[prevNodeIndex], _mAnimNode, -1);
+                            if (frame.data[0] > 0.25 && nextNodeIndex < _mNodeVec.size())
+                                hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[nextNodeIndex], 1);
+                            if (frame.data[0] > 0.5 && nextNodeIndex < _mNodeVec.size()) {
                                 hanim::object::dsvisual::Node::disconnect(_mNodeVec[prevNodeIndex], _mNodeVec[nextNodeIndex]);
-                                if (frame.data[0] > 0.5) {
-                                    hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[nextNodeIndex]);
-                                }
                             }
+                            break;
                     }
                 }
             );
 
-            _mAnimNode.setId(0x123); // enable
             _setAnimate(animTree, hObj);
         }
 
         {   // insert and update
             std::lock_guard<std::mutex> _al(_mUpdateListMutex);
+            hanim::object::dsvisual::Node currNode(_mNodeVec.back().id() + 5);
             _mNodeVec.push_back(currNode);
             NodeType::add(prev, curr);
             _updateListPos();
-            _mAnimNode.setId(-1); // disable
         }
+    }
+
+    void del(NodeType *prev, NodeType *curr, int ms = 500) {
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+
+        std::lock_guard<std::mutex> _al(_mUpdateListMutex);
+        _mNodeVec.pop_back();
+        NodeType::del(prev, curr);
     }
 
     int find(NodeType *nPtr) {
@@ -140,16 +149,14 @@ protected: // top-down interface
         _mNodePosY = ImGui::GetWindowHeight() / 3;
         ImNodes::BeginNodeEditor();
             // Head Node
-            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, IM_COL32(255, 0, 0, 100));
             _mNodeVec[0].render();
-            ImNodes::PopColorStyle();
-
-            int index = 1;
-            auto prev = _mNodeVec[0];
+            int prevIndex = 0;
             {
                 std::lock_guard<std::mutex> _al(_mUpdateListMutex);
-                for (auto it = headNodePtr()->link.next; it != to_link(headNodePtr()); it = it->next, index++) {
-                    _mNodeVec[index].render(
+                auto it = _mHeadNode.link.next;
+                for (int i = 1; i < _mNodeVec.size(); i++, it = it->next) {
+
+                    _mNodeVec[i].render(
                         [&] {
                             if (_mDataVisible) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.0f));
@@ -163,19 +170,17 @@ protected: // top-down interface
                         }
                     );
 
-                    _mNodeVec[index].setUpdatePos(false);
-
-                    if (index < _mNodeVec.size() - 1)
-                        hanim::object::dsvisual::Node::connect(prev, _mNodeVec[index]);
-
-                    prev = _mNodeVec[index];
+                    _mNodeVec[i].setUpdatePos(false);
+                    hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i], i < _mNodeVec.size() - 1 ? 0 : 1);
+                    prevIndex = i;
                 }
+
+                //assert(it == to_link(&_mHeadNode));
             }
 
-            _playAnimate();
-
-            if (_mAnimNode.id() > 0)
+            if(_playAnimate()) {
                 _mAnimNode.render();
+            }
 
         ImNodes::MiniMap();
         ImNodes::EndNodeEditor();
@@ -208,7 +213,7 @@ protected:
     bool _mDataVisible;
     float _mNodePosXOffset;
     float _mNodePosY;
-    hanim::object::dsvisual::Node _mAnimNode;
+    hanim::object::dsvisual::Node _mAnimNode; // avoid render crash, details - dsvisual-issue1
     dstruct::Vector<hanim::object::dsvisual::Node> _mNodeVec;
 };
 

@@ -17,25 +17,28 @@ int main() {
         ds::EmbeddedList<MyNode>::init(eList.headNodePtr());
         MyNode *headNodePtr = eList.headNodePtr();
         MyNode *midNodePtr = nullptr;
+
+        assert(headNodePtr->link.next = headNodePtr->link.prev); // empty test
+
         // head-insert
         for (int i = 0; i < 6; i++) {
             auto currNodePtr = new MyNode();
             if (i == 4) {
                 midNodePtr = currNodePtr;
             }
-            ds::EmbeddedList<MyNode>::add(headNodePtr, currNodePtr, &eList, 100);
+            eList.add(headNodePtr, currNodePtr, 100);
         }
 
         // mid-insert
         for (int i = 0; i < 4; i++) {
             auto currNodePtr = new MyNode();
-            ds::EmbeddedList<MyNode>::add(midNodePtr, currNodePtr, &eList, 100);
+            eList.add(midNodePtr, currNodePtr, 100);
         }
 
         // release
         while (!ds::EmbeddedList<MyNode>::empty(headNodePtr)) {
             auto firstNodePtr = MyNode::to_node(headNodePtr->link.next);
-            ds::EmbeddedList<MyNode>::del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 1000);
+            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 100);
             delete firstNodePtr;
         }
     }

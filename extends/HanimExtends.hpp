@@ -31,6 +31,10 @@ struct InsertAnim : public hanim::ComposeAnim {
             .setFrameNums(subF);
         setFrameTrackIndex(3 * subF); // TODO/Bug?: check finished status
 
+        hanim::ComposeAnim::alpha(0, 150)
+            .setFrameNums(frameNumbers);
+        setFrameTrackIndex(0);
+
         setFrameNums(frameNumbers);
     }
 };
@@ -88,6 +92,11 @@ public:
     }
 public:
     void render(std::function<void ()> drawData = nullptr) {
+        bool colorEnable = false;
+        if (_mR >= 0 && _mG >= 0 && _mB >= 0) { // TODO: optimize _mA and (r,g,b)
+            ImNodes::PushColorStyle(ImNodesCol_NodeBackground, IM_COL32(_mR, _mG, _mB, _mA < 0 ? 255 : _mA));
+            colorEnable = true;
+        }
         ImNodes::BeginNode(__mId);
             ImGui::Button("prev");
             ImNodes::BeginInputAttribute(inputId());
@@ -99,10 +108,12 @@ public:
 
             if (drawData) drawData();
             ImNodes::SetNodeDraggable(__mId, true);
+
             if (__mUpdatePos && _mX >= 0 && _mY >= 0) {
-                ImNodes::SetNodeEditorSpacePos(__mId, {_mX, _mY});
+                ImNodes::SetNodeGridSpacePos(__mId, {_mX, _mY});
             }
         ImNodes::EndNode();
+        if (colorEnable) ImNodes::PopColorStyle();
     }
 protected: // interface impl
     void _render() override {
