@@ -10,11 +10,13 @@ int main() {
 
 {// test: auto create/destory
     dsvisual::ds::Array<int, 10> arr;
+    arr.setVisible(true);
     std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
 {// test: dynamic create/destory
     dsvisual::ds::Array<int, 10> arr;
+    arr.setVisible(true);
     dstruct::Vector<dsvisual::ds::Array<int, 10> *> arrVec;
 
     for (int i = 0; i < 3; i++) {
@@ -29,6 +31,7 @@ int main() {
 
 {// test: track modified element
     dsvisual::ds::Array<int, 10> arr;
+    arr.setVisible(true);
     for (int i = 0; i < arr.size(); i++) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         arr[i] = i;
@@ -38,6 +41,7 @@ int main() {
 {// test: track iterator
 
     dsvisual::ds::Array<int, 10> arr;
+    arr.setVisible(true);
     for (auto it = arr.begin(); it != arr.end(); it++) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
@@ -46,6 +50,7 @@ int main() {
 {// test: track iterator and modify
 
     dsvisual::ds::Array<int, 10> arr;
+    arr.setVisible(true);
     for (auto it = arr.begin(); it != arr.end(); it++) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         *it = 0;
@@ -55,6 +60,7 @@ int main() {
 
 {// test: control index
     dsvisual::ds::Array<int, 10> arr;
+    arr.setVisible(true);
     std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 

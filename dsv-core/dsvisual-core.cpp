@@ -57,8 +57,14 @@ void WindowManager::__render() {
 
 /* --------------------------------------------------------------------------------------------------------- */
 
-PlatformManager::PlatformManager() : __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
+PlatformManager::PlatformManager() : __mFPS { 60 }, __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
     //__platformInit(); // platform resource cann't alloc in twice thread
+    __mXRecorderEnable = false;
+    __mRenderCallback = [](){
+        static xrecorder::OpenGLRecorder<1920, 1080, 60> dsvRecorder("dsvisual-core");
+        dsvRecorder.captureFrameData();
+        dsvRecorder.saveToVideo();
+    };
     __mRenderThread = std::move(std::thread(&PlatformManager::__windowRender, this));
 }
 
@@ -85,6 +91,11 @@ bool PlatformManager::windowClosed() { // only-read for __mWindow
     return glfwWindowShouldClose(getInstance().__mWindow);
 }
 
+void PlatformManager::waitWindowClosed(unsigned int ms) {
+    while (!windowClosed())
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
 void PlatformManager::setRootWindowName(std::string name) {
     __PlatformInitCheckOnlyOnce();
     glfwSetWindowTitle(getInstance().__mWindow, name.c_str());
@@ -93,6 +104,20 @@ void PlatformManager::setRootWindowName(std::string name) {
 void PlatformManager::setRootWindowSize(int width, int height) {
     __PlatformInitCheckOnlyOnce();
     glfwSetWindowSize(getInstance().__mWindow, width, height);
+}
+
+void PlatformManager::setWindowFPS(int fps) {
+    if (fps < 0 || fps > 1000)
+        fps = 60;
+    getInstance().__mFPS = fps;
+}
+
+void PlatformManager::setRecorder(bool enable) {
+    getInstance().__mXRecorderEnable = enable;
+}
+
+void PlatformManager::setRenderCallback(std::function<void ()> cb) {
+    getInstance().__mRenderCallback = cb;
 }
 
 void PlatformManager::__PlatformInitCheckOnlyOnce() {
@@ -150,6 +175,7 @@ void PlatformManager::__platformInit() {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImNodes::CreateContext(); // imnodes init
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -165,6 +191,7 @@ void PlatformManager::__platformDeinit() {
         // Cleanup
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+        ImNodes::DestroyContext(); // imnodes deinit
         ImGui::DestroyContext();
 
         glfwDestroyWindow(__mWindow);
@@ -190,7 +217,7 @@ void PlatformManager::__windowRender() {
 
     while (!__mWindowExited) {
         // 60 fps
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 60 - 10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / __mFPS));
 
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -218,6 +245,9 @@ void PlatformManager::__windowRender() {
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        if (__mXRecorderEnable)
+            __mRenderCallback();
+
         glfwSwapBuffers(__mWindow);
 
         if (PlatformManager::windowClosed()) __mWindowExited = true;
@@ -228,7 +258,10 @@ void PlatformManager::__windowRender() {
 /* --------------------------------------------------------------------------------------------------------- */
 
 Widget::Widget(const std::string name, bool visible, bool fullScreen) :
-    _mVisible { visible }, _mName { name }, _mFullScreen { fullScreen } {
+    _mVisible { visible }, _mName { name }, _mFullScreen { fullScreen }, __mHanimMutex {} {
+    _mX = _mY = _mW = _mH = -1;
+    __mAnimPtr = nullptr;
+    __mHObjPtr = nullptr;
     PlatformManager::getWindowManagerInstance().addWidget(this);
 }
 
@@ -241,22 +274,75 @@ std::string Widget::getName() const { return _mName; }
 void Widget::setVisible(bool visible) { _mVisible = visible; }
 void Widget::setName(std::string name) { _mName = name; }
 
+void Widget::setSize(float w, float h) {
+    _mW = w;
+    _mH = h;
+}
+
+void Widget::setPos(float x, float y) {
+    _mX = x;
+    _mY = y;
+}
+
+
+void Widget::_setAnimate(hanim::HAnimate &anim, hanim::HObject &hObj) {
+    {
+        std::lock_guard<std::mutex> _al(__mHanimMutex);
+        __mAnimPtr = &anim;
+        __mHObjPtr = &hObj;
+    }
+
+    while (
+        anim.status() != hanim::HAnimate::Status::Finished &&
+        !PlatformManager::windowClosed()
+    ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
+    }
+
+    {
+        std::lock_guard<std::mutex> _al(__mHanimMutex);
+        __mAnimPtr = nullptr;
+        __mHObjPtr = nullptr;
+    }
+}
+
+bool Widget::_playAnimate() {
+    std::lock_guard<std::mutex> _al(__mHanimMutex);
+    if (__mAnimPtr != nullptr && __mHObjPtr != nullptr) {
+        if (__mAnimPtr->status() != hanim::HAnimate::Status::Finished) {
+            hanim::HEngine::PlayFrame(*__mAnimPtr, *__mHObjPtr);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Widget::draw() {
     ImGuiWindowFlags windowFlags = 0;
     bool *pOpen = &_mVisible;
+    ImVec2 pos, size;
 
     if (_mVisible == false) return;
 
+    pos.x = _mX; pos.y = _mY;
+    size.x = _mW; size.y = _mH;
+
     if (_mFullScreen) {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->Pos);
-        ImGui::SetNextWindowSize(viewport->Size);
+        pos = viewport->Pos;
+        size = viewport->Size;
         {
             windowFlags |= ImGuiWindowFlags_NoResize;
             windowFlags |= ImGuiWindowFlags_NoTitleBar;
             pOpen = nullptr;
         }
     }
+
+    if (pos.x >= 0 && pos.y >= 0)
+        ImGui::SetNextWindowPos(pos);
+    if (size.x > 0 && size.y > 0)
+        ImGui::SetNextWindowSize(size);
 
     ImGui::Begin(_mName.c_str(), &_mVisible, windowFlags);
     {

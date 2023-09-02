@@ -8,6 +8,10 @@
 
 // DStruct
 #include <dstruct.hpp>
+// Hanim
+#include <Hanim.hpp>
+// XRecorder
+#include <OpenGLRecorder.hpp>
 
 // imgui: glfw + opengl3
 #include "imgui.h"
@@ -26,6 +30,9 @@
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
+
+// imgui extend
+#include <imnodes.h>
 
 namespace dsvisual {
 
@@ -59,8 +66,12 @@ public:
     // contruct/destory seq for global obj 
     static WindowManager & getWindowManagerInstance();
     static bool windowClosed();
+    static void waitWindowClosed(unsigned int ms = 100);
     static void setRootWindowName(std::string name);
     static void setRootWindowSize(int width, int height);
+    static void setWindowFPS(int fps = 60);
+    static void setRecorder(bool enable = true);
+    static void setRenderCallback(std::function<void ()> cb);
 private:
     PlatformManager();
     PlatformManager(PlatformManager const&)            = delete;
@@ -75,10 +86,13 @@ private: // platform init/deinit: ensure platform resource init/deinit in same t
 private: // render thread
     void __windowRender();
 private:
+    int __mFPS;
+    bool __mXRecorderEnable;
     GLFWwindow *__mWindow;
     WindowManager __mWindowManager;
     bool __mWindowExited;
     std::thread __mRenderThread;
+    std::function<void ()> __mRenderCallback;
 };
 
 
@@ -87,7 +101,7 @@ private:
 
 class Widget {
 public:
-    Widget(const std::string name = "Widget", bool visible = true, bool _mFullScreen = false);
+    Widget(const std::string name = "Widget", bool visible = false, bool _mFullScreen = false);
     Widget(const Widget&) = delete;
     Widget(Widget&&) = delete; // TODO: to support
     Widget & operator=(const Widget&) = delete;
@@ -98,6 +112,8 @@ public: // op for user
     std::string getName() const;
     void setVisible(bool visible);
     void setName(std::string name);
+    void setSize(float w, float h);
+    void setPos(float x, float y);
 public:
     void draw();
 protected: // top-down interface
@@ -106,9 +122,18 @@ protected: // top-down interface
     virtual void _drawControlImpl() { }
     virtual void _drawAboutImpl() { }
 protected:
+    void _setAnimate(hanim::HAnimate &anim, hanim::HObject &hObj);
+    bool _playAnimate();
+protected:
     std::string _mName;
+    float _mX, _mY;
+    float _mW, _mH;
     bool _mVisible;
     bool _mFullScreen;
+private:
+    std::mutex __mHanimMutex;
+    hanim::HAnimate *__mAnimPtr;
+    hanim::HObject *__mHObjPtr;
 };
 
 static void glfw_error_callback(int error, const char* description);
