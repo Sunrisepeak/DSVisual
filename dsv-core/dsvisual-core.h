@@ -71,7 +71,8 @@ public:
     static void setRootWindowSize(int width, int height);
     static void setWindowFPS(int fps = 60);
     static void setRecorder(bool enable = true);
-    static void setRenderCallback(std::function<void ()> cb);
+    // static void setRenderCallback(std::function<void ()> cb);
+    static void frameSync(int limitMs = 1);
 private:
     PlatformManager();
     PlatformManager(PlatformManager const&)            = delete;
@@ -88,11 +89,12 @@ private: // render thread
 private:
     int __mFPS;
     bool __mXRecorderEnable;
+    bool __mFrameSyncWait;
     GLFWwindow *__mWindow;
     WindowManager __mWindowManager;
     bool __mWindowExited;
     std::thread __mRenderThread;
-    std::function<void ()> __mRenderCallback;
+    xrecorder::OpenGLRecorder<1920, 1080, 60> __mDSVRecorder;
 };
 
 

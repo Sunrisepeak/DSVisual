@@ -57,14 +57,25 @@ void WindowManager::__render() {
 
 /* --------------------------------------------------------------------------------------------------------- */
 
-PlatformManager::PlatformManager() : __mFPS { 60 }, __mWindow { nullptr }, __mWindowManager{}, __mWindowExited { false } {
+PlatformManager::PlatformManager() :
+    __mFPS { 60 },
+    __mWindow { nullptr },
+    __mWindowManager{},
+    __mWindowExited { false },
+    __mDSVRecorder("dsvisual-recorder")
+{
     //__platformInit(); // platform resource cann't alloc in twice thread
     __mXRecorderEnable = false;
-    __mRenderCallback = [](){
-        static xrecorder::OpenGLRecorder<1920, 1080, 60> dsvRecorder("dsvisual-core");
+    __mFrameSyncWait = false;
+/*
+    __mRenderCallback = [&](){
+        //need control destory-seq __mRenderThread stop -> xr -> PlatformManager
+        //static xrecorder::OpenGLRecorder<1920, 1080, 60> dsvRecorder("dsvisual-core");
+        //use member-var
         dsvRecorder.captureFrameData();
         dsvRecorder.saveToVideo();
     };
+*/
     __mRenderThread = std::move(std::thread(&PlatformManager::__windowRender, this));
 }
 
@@ -115,9 +126,17 @@ void PlatformManager::setWindowFPS(int fps) {
 void PlatformManager::setRecorder(bool enable) {
     getInstance().__mXRecorderEnable = enable;
 }
-
+/*
 void PlatformManager::setRenderCallback(std::function<void ()> cb) {
     getInstance().__mRenderCallback = cb;
+}
+*/
+void PlatformManager::frameSync(int limitMs) {
+    getInstance().__mFrameSyncWait = true;
+    while (getInstance().__mFrameSyncWait && limitMs > 0) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+        limitMs--;
+    }
 }
 
 void PlatformManager::__PlatformInitCheckOnlyOnce() {
@@ -245,12 +264,16 @@ void PlatformManager::__windowRender() {
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        if (__mXRecorderEnable)
-            __mRenderCallback();
+        if (__mXRecorderEnable) {
+            __mDSVRecorder.captureFrameData();
+            __mDSVRecorder.saveToVideo();
+        }
 
         glfwSwapBuffers(__mWindow);
 
         if (PlatformManager::windowClosed()) __mWindowExited = true;
+
+        __mFrameSyncWait = false; // frame sync finished
     }
     __platformDeinit();
 }
