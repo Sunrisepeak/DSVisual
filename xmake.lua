@@ -10,10 +10,14 @@ set_languages("cxx17")
 add_requires("imgui 1.88", {configs = {glfw_opengl3 = true}})
 add_packages("imgui")
 
+-- imgui node
+add_includedirs("third-party/imnodes")
+add_files("third-party/imnodes/imnodes.cpp")
+
 ---- DStruct: data struct library
 add_includedirs("third-party/DStruct")
 
----- hanim: animate framework
+---- Hanim: animate framework
 add_includedirs("third-party/Hanim")
 
 ---- XRecorder: OpenGLRecorder
@@ -25,13 +29,9 @@ if is_host("linux") then
     add_links("opencv_imgproc", "opencv_videoio", "opencv_imgcodecs")
 end
 
--- imgui node
-add_includedirs("third-party/imnodes")
-add_files("third-party/imnodes/imnodes.cpp")
-
 -- config dsvisual
-add_files("dsv-core/dsvisual-core.cpp")
 add_includedirs(".")
+add_files("dsv-core/dsvisual-core.cpp")
 
 target("dsvisual_array")
     set_kind("binary")
@@ -41,6 +41,6 @@ target("dsvisual_embedded_list")
     set_kind("binary")
     add_files("examples/ds/embedded_list.cpp")
 
-target("dsvisual_bubble_sort_visual")
+target("dsvisual_sort-visualization")
     set_kind("binary")
-    add_files("examples/bubble_sort_visual.cpp")
+    add_files("examples/algo/sort-visualization.cpp")

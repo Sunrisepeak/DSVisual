@@ -1,5 +1,5 @@
-#ifndef __DS_VISUAL_HPP__
-#define __DS_VISUAL_HPP__
+#ifndef __DS_VISUAL_HPP__DSVISUAL
+#define __DS_VISUAL_HPP__DSVISUAL
 
 // base
 #include <dsv-core/dsvisual-core.h>
