@@ -44,3 +44,7 @@ target("dsvisual_embedded_list")
 target("dsvisual_sort-visualization")
     set_kind("binary")
     add_files("examples/algo/sort-visualization.cpp")
+
+target("dsvisual_sort-bugview")
+    set_kind("binary")
+    add_files("examples/algo/sort-bugview.cpp")
