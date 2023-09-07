@@ -1,16 +1,16 @@
 [submodule "third-party/imgui"]
 	path = third-party/imgui
-	url = https://github.com/ocornut/imgui.git
+	url = git@github.com:ocornut/imgui.git
 	branch = v1.88
 [submodule "third-party/DStruct"]
 	path = third-party/DStruct
-	url = https://github.com/Sunrisepeak/DStruct.git
+	url = git@github.com:Sunrisepeak/DStruct.git
 [submodule "third-party/Hanim"]
 	path = third-party/Hanim
-	url = https://github.com/Sunrisepeak/Hanim.git
+	url = git@github.com:Sunrisepeak/Hanim.git
 [submodule "third-party/XRecorder"]
 	path = third-party/XRecorder
-	url = https://github.com/Sunrisepeak/XRecorder.git
+	url = git@github.com:Sunrisepeak/XRecorder.git
 [submodule "third-party/imnodes"]
 	path = third-party/imnodes
-	url = https://github.com/Sunrisepeak/imnodes.git
+	url = git@github.com:Sunrisepeak/imnodes.git

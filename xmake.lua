@@ -22,12 +22,8 @@ add_includedirs("third-party/Hanim")
 
 ---- XRecorder: OpenGLRecorder
 add_includedirs("third-party/XRecorder")
-if is_host("linux") then
-    add_includedirs("/usr/include/opencv4")
-    add_links("opencv_core")
-    add_links("opencv_highgui")
-    add_links("opencv_imgproc", "opencv_videoio", "opencv_imgcodecs")
-end
+add_requires("opencv 4.6")
+add_packages("opencv")
 
 -- config dsvisual
 add_includedirs(".")
