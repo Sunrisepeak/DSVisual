@@ -25,6 +25,17 @@ add_includedirs("third-party/XRecorder")
 add_requires("opencv 4.6")
 add_packages("opencv")
 
+--[[
+if is_plat("linux") then
+    add_includedirs("/usr/include/opencv4")
+    add_links("GL")
+    add_links("pthread")
+    add_links("opencv_core")
+    add_links("opencv_highgui")
+    add_links("opencv_imgproc", "opencv_videoio", "opencv_imgcodecs")
+end
+]]
+
 -- config dsvisual
 add_includedirs(".")
 add_files("dsv-core/dsvisual-core.cpp")
