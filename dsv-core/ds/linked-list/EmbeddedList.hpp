@@ -77,6 +77,7 @@ public:
             _updateAnimateData(prev);
             auto anim = hanim::animate::dsvisual::DeleteAnim(100, animFrameNumbers);
             _setAnimate(anim, *this);
+            _mConnectIssueWorkaround = true;
         }
 
         {
@@ -141,16 +142,13 @@ protected: // top-down interface
 
                     _mNodeVec[i].setUpdatePos(false);
 
-                    if (i < _mNodeVec.size() - 1) {// TODO: workaround connect issue
+                    if (!_mConnectIssueWorkaround) {// TODO: workaround connect issue
                         hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
-                    } else if (i == _mNodeVec.size() - 1) {
-                        if (!_mConnectIssueWorkaround)
-                            hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
-                        else
-                            _mConnectIssueWorkaround = false;
                     }
                     prevIndex = i;
                 }
+
+                _mConnectIssueWorkaround = false;
 
                 assert(it == to_link(&_mHeadNode));
             }
