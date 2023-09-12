@@ -39,6 +39,48 @@ struct InsertAnim : public hanim::ComposeAnim {
     }
 };
 
+struct DeleteAnim : public hanim::ComposeAnim {
+    DeleteAnim(float deltaY, int frameNumbers = 60) {
+        int subF = frameNumbers / 5;
+        // step1: move down
+        hanim::ComposeAnim::move(-1, 0, -1, deltaY)
+            .setFrameNums(subF);
+        setFrameTrackIndex(0);
+
+        auto customAnimTemplate = hanim::InterpolationAnim(
+            hanim::InterpolationAnim::IAType::CUSTOM,
+            { 0 }, { 1 },
+            subF
+        );
+
+        // step2: prev -> next
+        customAnimTemplate.setStartFrame({0});
+        customAnimTemplate.setEndFrame({1});
+        addAnim(customAnimTemplate, subF);
+
+        // step3: prev <- next
+        customAnimTemplate.setStartFrame({1});
+        customAnimTemplate.setEndFrame({2});
+        addAnim(customAnimTemplate, subF * 2);
+
+        // step4: prev <-x- curr -x-> next
+        customAnimTemplate.setStartFrame({2});
+        customAnimTemplate.setEndFrame({3});
+        addAnim(customAnimTemplate, subF * 3);
+
+        // step5: fade-out and move-L
+        customAnimTemplate.setStartFrame({3});
+        customAnimTemplate.setEndFrame({4});
+        addAnim(customAnimTemplate, subF * 4);
+
+        hanim::ComposeAnim::alpha(255, 0)
+            .setFrameNums(subF);
+        setFrameTrackIndex(subF * 4);
+
+        setFrameNums(frameNumbers);
+    }
+};
+
 }
 }
 
@@ -49,10 +91,11 @@ namespace dsvisual {
 
 class Node : public hanim::HObjectTemplate {
 public:
-    Node(int id) : HObjectTemplate(), __mId { id }, __mUpdatePos { true }  { }
+    Node(int id) : HObjectTemplate(), __mId { id }, __mUpdatePos { true }, __mVisible { true }  { }
     Node & operator=(const Node &node) {
         __mId = node.__mId;
         __mUpdatePos = node.__mUpdatePos;
+        __mVisible = node.__mVisible;
     }
 public:
     // -1: <-
@@ -90,8 +133,14 @@ public:
     void setUpdatePos(bool update = true) {
         __mUpdatePos = update;
     }
+    void setVisible(bool visible) {
+        __mVisible = visible;
+    }
 public:
     void render(std::function<void ()> drawData = nullptr) {
+
+        if (!__mVisible) return;
+
         bool colorEnable = false;
         if (_mR >= 0 && _mG >= 0 && _mB >= 0) { // TODO: optimize _mA and (r,g,b)
             ImNodes::PushColorStyle(ImNodesCol_NodeBackground, IM_COL32(_mR, _mG, _mB, _mA < 0 ? 255 : _mA));
@@ -122,6 +171,7 @@ protected: // interface impl
 private:
     int __mId;
     bool __mUpdatePos;
+    bool __mVisible;
 };
 
 }

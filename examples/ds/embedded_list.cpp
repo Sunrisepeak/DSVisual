@@ -10,7 +10,7 @@ using MyNode = dstruct::EListNode<ds::Array<int, 4>>;
 
 int main() {
     //PlatformManager::setWindowFPS(60);
-    //PlatformManager::setRecorder();
+    PlatformManager::setRecorder();
 
     ds::EmbeddedList<MyNode> eList;
 
@@ -29,19 +29,19 @@ int main() {
             if (i == 4) {
                 midNodePtr = currNodePtr;
             }
-            eList.add(headNodePtr, currNodePtr, 200);
+            eList.add(headNodePtr, currNodePtr, 100);
         }
 
         // mid-insert
         for (int i = 0; i < 4; i++) {
             auto currNodePtr = new MyNode();
-            eList.add(midNodePtr, currNodePtr, 200);
+            eList.add(midNodePtr, currNodePtr, 100);
         }
 
         // release
         while (!ds::EmbeddedList<MyNode>::empty(headNodePtr)) {
             auto firstNodePtr = MyNode::to_node(headNodePtr->link.next);
-            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 1000);
+            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 100);
             delete firstNodePtr;
         }
     }

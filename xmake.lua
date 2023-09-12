@@ -34,7 +34,7 @@ if is_plat("linux") then
     add_links("opencv_highgui")
     add_links("opencv_imgproc", "opencv_videoio", "opencv_imgcodecs")
 end
-]]
+--]]
 
 -- config dsvisual
 add_includedirs(".")
