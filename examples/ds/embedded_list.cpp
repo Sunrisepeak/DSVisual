@@ -23,25 +23,24 @@ int main() {
 
         assert(headNodePtr->link.next = headNodePtr->link.prev); // empty test
 
-        // head-insert
-        for (int i = 0; i < 6; i++) {
+        // tail-insert
+        auto insertPtr = headNodePtr;
+        for (int i = 0; i < 2; i++) {
             auto currNodePtr = new MyNode();
-            if (i == 4) {
-                midNodePtr = currNodePtr;
-            }
-            eList.add(headNodePtr, currNodePtr, 100);
+            eList.add(insertPtr, currNodePtr, 200);
+            insertPtr = currNodePtr;
         }
 
         // mid-insert
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
             auto currNodePtr = new MyNode();
-            eList.add(midNodePtr, currNodePtr, 100);
+            eList.add(insertPtr, currNodePtr, 200);
         }
 
         // release
         while (!ds::EmbeddedList<MyNode>::empty(headNodePtr)) {
             auto firstNodePtr = MyNode::to_node(headNodePtr->link.next);
-            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 100);
+            eList.del(headNodePtr, MyNode::to_node(headNodePtr->link.next), 200);
             delete firstNodePtr;
         }
     }

@@ -3,9 +3,7 @@
 
 #include <dstruct.hpp>
 #include <dsv-core/dsvisual-core.h>
-
-#include <extends/HanimExtends.hpp>
-#include <extends/ImguiExtends.hpp>
+#include <animate/HanimExtends.hpp>
 
 namespace dsvisual {
 namespace ds {
@@ -13,25 +11,32 @@ namespace ds {
 template <typename NodeType>
 class EmbeddedList : public Widget, hanim::HObject {
 public:
-    EmbeddedList() : _mUpdateListMutex {}, _mAnimNode{0x123}, _mNodeVec() {
-        _mName = "EmbeddedList - " + std::to_string((uint64_t)this);
+    EmbeddedList() : _mUpdateListMutex{}, _mAnimNode{ 0 }, _mNodeVec{} {
+
+        auto objAd = reinterpret_cast<unsigned long long>(this);
 
         // DSVisual
+        _mName = "EmbeddedList - " + std::to_string(objAd);
         _mDataVisible = false;
         _mFullScreen = true;
 
         // Hanim
-        hanim::object::dsvisual::Node node(0x1234 + ((uint64_t)this % 0x100) * 0x1234);
-        node.setPos(50, 200);
-        node.setColor(255, 0, 0);
-        node.setAlpha(255);
-        _mNodeVec.push_back(node);
+        // config head-node by use _mAnimNode(tmp)
+        _mAnimNode.setId(objAd);
+        _mAnimNode.setPos(50, 200);
+        _mAnimNode.setColor(0, 0, 255);
+        _mAnimNode.setAlpha(255);
+        _mNodeVec.push_back(_mAnimNode);
+
         _mNodePosXOffset = 200;
         _mNodePosY = 250;
-        _mAnimNode.setColor(0, 0, 255);
 
-        // TODO: Workaround
-        _mConnectIssueWorkaround = false;
+        // animate
+        _mAType = _AnimType::NONE;
+        _mPrevNodeIndex = 0;
+        _mNextNodeIndex = 0;
+        _mTargetNodeIndex = 0;
+        _mAnimNode.setId(objAd - 1); // reset
     }
 
 public: // DS interface
@@ -51,33 +56,30 @@ public: // DS interface
         return NodeType::to_link(node);
     }
 public:
-    void add(NodeType *prev, NodeType *curr, unsigned int animFrameNumbers = 0) {
-        if (animFrameNumbers > 5) {
+    void add(NodeType *prev, NodeType *curr, int animFrameNumbers = 0) {
+        if (animFrameNumbers > 0) {
             _mAType = _AnimType::Insert;
             _updateAnimateData(prev);
-            // hanimate
             auto animTree = hanim::animate::dsvisual::InsertAnim(_mNodePosY, _mNodePosXOffset, animFrameNumbers);
             _setAnimate(animTree, *this);
-            _mConnectIssueWorkaround = true;
         }
 
         {   // insert and update
             std::lock_guard<std::mutex> _al(_mUpdateListMutex);
-            hanim::object::dsvisual::Node currNode(_mNodeVec.back().id() + 5);
+            hanim::object::dsvisual::LNode currNode(_mNodeVec.back().id() + 5);
             _mNodeVec.push_back(currNode);
             NodeType::add(prev, curr);
             _updateListPos();
         }
     }
 
-    void del(NodeType *prev, NodeType *curr, unsigned int animFrameNumbers = 0) {
+    void del(NodeType *prev, NodeType *curr, int animFrameNumbers = 0) {
 
         if (animFrameNumbers > 0) {
             _mAType = _AnimType::Delete;
             _updateAnimateData(prev);
             auto anim = hanim::animate::dsvisual::DeleteAnim(100, animFrameNumbers);
             _setAnimate(anim, *this);
-            _mConnectIssueWorkaround = true;
         }
 
         {
@@ -111,8 +113,14 @@ protected:
 
 protected: // top-down interface
     virtual void _drawBasicInfoImpl() override {
+        ImGui::Text("DStruct: EmbeddedList"); ImGui::Separator();
+        ImGui::Text("LinkType: Double Link"); ImGui::Separator();
         ImGui::Text("HeadNode: %p", &_mHeadNode); ImGui::Separator();
-        ImGui::Text("Mode: %s", _mDataVisible ? "Data" : "Link"); ImGui::Separator();
+        ImGui::Text("Visual Mode: %s", _mDataVisible ? "Data" : "Link"); ImGui::Separator();
+        ImGui::Text("Link Color: ");
+        ImGui::SameLine(); ImGui::TextColored({0, 1, 0, 1}, " --> ");
+        ImGui::SameLine(); ImGui::TextColored({1, 0, 0, 1}, " <-- ");
+        ImGui::SameLine(); ImGui::TextColored({1, 1, 0, 1}, " <-> ");
     }
 
     virtual void _drawVisualImpl() override {
@@ -139,16 +147,10 @@ protected: // top-down interface
                             }
                         }
                     );
-
                     _mNodeVec[i].setUpdatePos(false);
-
-                    if (!_mConnectIssueWorkaround) {// TODO: workaround connect issue
-                        hanim::object::dsvisual::Node::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
-                    }
+                    hanim::object::dsvisual::LNode::connect(_mNodeVec[prevIndex], _mNodeVec[i]);
                     prevIndex = i;
                 }
-
-                _mConnectIssueWorkaround = false;
 
                 assert(it == to_link(&_mHeadNode));
             }
@@ -173,13 +175,26 @@ protected: // top-down interface
         }
     }
 
-    virtual void _drawAboutImpl() override { }
+    virtual void _drawAboutImpl() override {
+        {
+            ImGui::PushID("EmbeddedList");
+            char implLinks[256] = "DStruct: "
+                "https://github.com/Sunrisepeak"
+                "/DStruct/blob/main"
+                "/core/ds/linked-list/EmbeddedList.hpp";
+            ImGui::PushItemWidth(ImGui::GetWindowSize().x);
+            ImGui::InputText("", implLinks, 256, ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopItemWidth();
+            ImGui::PopID();
+        }
+    }
 
 /* -----------------------------------------Hanim: animate impl-------------------------------------------- */
 
 protected:
 
     enum class _AnimType {
+        NONE,
         Insert,
         Delete,
     };
@@ -188,19 +203,20 @@ protected:
     int _mPrevNodeIndex;
     int _mNextNodeIndex;
     int _mTargetNodeIndex;
-    hanim::object::dsvisual::Node _mAnimNode; // avoid render crash, details - dsvisual-issue1
+    hanim::object::dsvisual::LNode _mAnimNode; // avoid render crash, details - dsvisual-issue1
 
     void _updateAnimateData(NodeType *prev) {
         _mPrevNodeIndex = find(prev);
         if (_mAType == _AnimType::Insert) {
             _mNextNodeIndex = _mPrevNodeIndex + 1;
             _mTargetNodeIndex = _mNextNodeIndex;
+            _mAnimNode.setColor(0, 255, 0);
             _mAnimNode.setVisible(true);
         } else if (_mAType == _AnimType::Delete) {
             _mTargetNodeIndex = _mPrevNodeIndex + 1;
             _mNextNodeIndex = _mPrevNodeIndex + 2;
             _mAnimNode.setVisible(false);
-            //_mNodeVec[_mTargetNodeIndex].setColor(0, 255, 0);
+            _mNodeVec[_mTargetNodeIndex].setColor(255, 0, 0);
         }
     }
 
@@ -226,29 +242,27 @@ protected:
                     float currNodePosX = 50 + _mNodePosXOffset * _mTargetNodeIndex;
                     _mAnimNode.setPos(currNodePosX, frame.data[1]);
                     _mAnimNode.setUpdatePos(true);
-                    if (frame.data[1] > _mNodePosY / 2 + 1 && _mNextNodeIndex < _mNodeVec.size()) {
-                        hanim::object::dsvisual::Node::connect(_mNodeVec[_mPrevNodeIndex], _mAnimNode, -1);
+                    if (frame.data[1] >= _mNodePosY / 2 + 1) {
+                        hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mAnimNode, -1);
                         if (_mNextNodeIndex < _mNodeVec.size()) {
-                            hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[_mNextNodeIndex], 1);
-                            hanim::object::dsvisual::Node::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex]);
+                            hanim::object::dsvisual::LNode::connect(_mAnimNode, _mNodeVec[_mNextNodeIndex], 1);
+                            hanim::object::dsvisual::LNode::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex]);
                         }
                     }
                 }
                 break;
-            /*
-            case hanim::InterpolationAnim::GRADIENT:
-                _mAnimNode.setColor(frame.data[0], frame.data[1], frame.data[2]);
-                break;
-            */
             case hanim::InterpolationAnim::ALPHA:
                 _mAnimNode.setAlpha(frame.data[0]);
                 break;
-            case hanim::InterpolationAnim::SCALE: // link anim
-                hanim::object::dsvisual::Node::connect(_mNodeVec[_mPrevNodeIndex], _mAnimNode, -1);
-                if (frame.data[0] > 0.25 && _mNextNodeIndex < _mNodeVec.size())
-                    hanim::object::dsvisual::Node::connect(_mAnimNode, _mNodeVec[_mNextNodeIndex], 1);
-                if (frame.data[0] > 0.5 && _mNextNodeIndex < _mNodeVec.size()) {
-                    hanim::object::dsvisual::Node::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex]);
+            case hanim::InterpolationAnim::CUSTOM: // link anim
+            //case -1: // end-frame
+                hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mAnimNode, -1);
+                if (_mNextNodeIndex < _mNodeVec.size()) {
+                    if (frame.data[0] > 0.25 && _mNextNodeIndex < _mNodeVec.size())
+                        hanim::object::dsvisual::LNode::connect(_mAnimNode, _mNodeVec[_mNextNodeIndex], 1);
+                    if (frame.data[0] > 0.5 && _mNextNodeIndex < _mNodeVec.size()) {
+                        hanim::object::dsvisual::LNode::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex]);
+                    }
                 }
                 break;
         }
@@ -262,18 +276,15 @@ protected:
                 _mNodeVec[_mTargetNodeIndex].setPos(currNodePosX, _mNodePosY + frame.data[1]);
                 _mNodeVec[_mTargetNodeIndex].setUpdatePos(true);
                 break;
-            case hanim::InterpolationAnim::ALPHA:
-                _mNodeVec[_mTargetNodeIndex].setAlpha(frame.data[0]);
-                break;
             case hanim::InterpolationAnim::CUSTOM: // link anim
             case -1: // end frame
                 if (_mNextNodeIndex < _mNodeVec.size()) {
-                    hanim::object::dsvisual::Node::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex], 1);
+                    hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex], 1);
                     if (frame.data[0] > 1)
-                        hanim::object::dsvisual::Node::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex], -1);
+                        hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex], -1);
                     if (frame.data[0] > 2) {
-                        hanim::object::dsvisual::Node::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mTargetNodeIndex], -1);
-                        hanim::object::dsvisual::Node::disconnect(_mNodeVec[_mTargetNodeIndex], _mNodeVec[_mNextNodeIndex], 1);
+                        hanim::object::dsvisual::LNode::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mTargetNodeIndex], -1);
+                        hanim::object::dsvisual::LNode::disconnect(_mNodeVec[_mTargetNodeIndex], _mNodeVec[_mNextNodeIndex], 1);
                     }
                     if (frame.data[0] > 3) {
                         _mNodeVec[_mTargetNodeIndex].setVisible(false);
@@ -291,7 +302,8 @@ protected:
             _mNodeVec[i].setPos(nodePosX, _mNodePosY);
             _mNodeVec[i].setUpdatePos(true);
             _mNodeVec[i].setVisible(true);
-            //_mNodeVec[i].setColor(-1, -1, -1); // set default
+            if (i != 0)
+                _mNodeVec[i].setColor(-1, -1, -1); // set default
         }
     }
 
@@ -299,8 +311,7 @@ protected:
     bool _mDataVisible;
     float _mNodePosXOffset;
     float _mNodePosY;
-    bool _mConnectIssueWorkaround; // TODO; fix the issue
-    dstruct::Vector<hanim::object::dsvisual::Node> _mNodeVec;
+    dstruct::Vector<hanim::object::dsvisual::LNode> _mNodeVec;
 };
 
 }
