@@ -1,8 +1,8 @@
 
 <p align="center">
   <img
-    width="1280"
-    height="640"
+    width="640"
+    height="320"
     src="docs/imgs/DSVisual.profile.png"
     alt="DSVisual Profile"
   />
