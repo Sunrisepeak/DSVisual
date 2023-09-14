@@ -3,9 +3,10 @@
 #include <dsvisual.hpp>
 
 #include <examples/demo-helper.hpp>
+//#define ENABLE_SORT_DELAY
 #include <examples/algo/sort.hpp>
 
-constexpr int ARR_SIZE = 500;
+constexpr int ARR_SIZE = 50000;
 
 int main() {
 

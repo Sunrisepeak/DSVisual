@@ -22,6 +22,7 @@ public:
         __mUpdatePos = node.__mUpdatePos;
         __mVisible = node.__mVisible;
         __mTitle = node.__mTitle;
+        return *this;
     }
 public:
     // -1: <-

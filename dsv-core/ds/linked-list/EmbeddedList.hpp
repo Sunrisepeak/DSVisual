@@ -186,17 +186,9 @@ protected: // top-down interface
     }
 
     virtual void _drawAboutImpl() override {
-        {
-            ImGui::PushID("EmbeddedList");
-            char implLinks[256] = "DStruct: "
-                "https://github.com/Sunrisepeak"
-                "/DStruct/blob/main"
-                "/core/ds/linked-list/EmbeddedList.hpp";
-            ImGui::PushItemWidth(ImGui::GetWindowSize().x);
-            ImGui::InputText("", implLinks, 256, ImGuiInputTextFlags_ReadOnly);
-            ImGui::PopItemWidth();
-            ImGui::PopID();
-        }
+        Widget::_drawAboutImpl();
+        ImGui::Text("DSVisual-Impl: dsv-core/ds/linked-list/EmbeddedList.hpp");
+        ImGui::Text("DStruct-Impl: core/ds/linked-list/EmbeddedList.hpp");
     }
 
 /* -----------------------------------------Hanim: animate impl-------------------------------------------- */
