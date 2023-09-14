@@ -119,10 +119,10 @@ public: // op for user
 public:
     void draw();
 protected: // top-down interface
-    virtual void _drawBasicInfoImpl() { }
-    virtual void _drawVisualImpl() { /* */ }
-    virtual void _drawControlImpl() { }
-    virtual void _drawAboutImpl() { }
+    virtual void _drawBasicInfoImpl();
+    virtual void _drawVisualImpl();
+    virtual void _drawControlImpl();
+    virtual void _drawAboutImpl();
 protected:
     void _setAnimate(hanim::HAnimate &anim, hanim::HObject &hObj);
     bool _playAnimate();

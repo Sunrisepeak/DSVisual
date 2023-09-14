@@ -379,6 +379,37 @@ void Widget::draw() {
     ImGui::End();
 }
 
+// top-down interface - default
+void Widget::_drawBasicInfoImpl() {
+    // TODO
+}
+
+void Widget::_drawVisualImpl() {
+    // TODO
+}
+
+void Widget::_drawControlImpl() {
+    // TODO
+}
+
+void Widget::_drawAboutImpl() {
+    {
+        ImGui::TextColored({0, 1, 0, 0.5}, "Data Structure - OpenSource");
+        ImGui::PushID("DSVisual");
+            char link1[256] = " - DSVisual: https://github.com/Sunrisepeak/DSVisual";
+            ImGui::PushItemWidth(ImGui::GetWindowSize().x);
+            ImGui::InputText("", link1, 256, ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopItemWidth();
+        ImGui::PopID();
+        ImGui::PushID("DStruct");
+            char link2[256] = " - DStruct: https://github.com/Sunrisepeak/DStruct";
+            ImGui::PushItemWidth(ImGui::GetWindowSize().x);
+            ImGui::InputText("", link2, 256, ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopItemWidth();
+        ImGui::PopID();
+    }
+}
+
 /* --------------------------------------------------------------------------------------------------------- */
 
 static void glfw_error_callback(int error, const char* description) {

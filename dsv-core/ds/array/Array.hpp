@@ -148,7 +148,7 @@ protected:
 protected: // interface impl
 
     void _drawBasicInfoImpl() override {
-        //ImGui::Text("this: %p", this); ImGui::Separator();
+        ImGui::Text("DStruct: Array"); ImGui::Separator();
         ImGui::Text("_mSize: %ld", N); ImGui::Separator();
         ImGui::Text("_mC Address: %p", this->_mC); ImGui::Separator();
     }
@@ -162,6 +162,12 @@ protected: // interface impl
     void _drawControlImpl() override {
         ImGui::SetNextItemWidth(ImGui::GetWindowWidth());
         ImGui::SliderInt("", &_mStartIndex, 0, N - 1, "Start Index %d"); ImGui::Separator();
+    }
+
+    void _drawAboutImpl() override {
+        Widget::_drawAboutImpl();
+        ImGui::Text("DSVisual-Impl: dsv-core/ds/array/Array.hpp");
+        ImGui::Text("DStruct-Impl: core/ds/array/Array.hpp");
     }
 
 protected:

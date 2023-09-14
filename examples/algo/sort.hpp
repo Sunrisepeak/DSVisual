@@ -12,7 +12,9 @@
 #define SWAP_SLEEP_MS 300
 
 static void operateDelay(int microSec) {
+#ifdef ENABLE_SORT_DELAY
     std::this_thread::sleep_for(std::chrono::microseconds(microSec));
+#endif
 }
 
 template <unsigned int ARR_SIZE>
