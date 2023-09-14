@@ -18,7 +18,7 @@ public:
         // DSVisual
         _mName = "EmbeddedList - " + std::to_string(objAd);
         _mDataVisible = false;
-        _mFullScreen = true;
+        //_mFullScreen = true;
 
         // Hanim
         // config head-node by use _mAnimNode(tmp)
@@ -27,15 +27,17 @@ public:
         _mAnimNode.setColor(0, 0, 255);
         _mAnimNode.setAlpha(255);
         _mNodeVec.push_back(_mAnimNode);
+        _mNodeVec[0].setTitle("Head");
 
         _mNodePosXOffset = 200;
-        _mNodePosY = 250;
+        _mNodePosY = 300;
 
         // animate
         _mAType = _AnimType::NONE;
         _mPrevNodeIndex = 0;
         _mNextNodeIndex = 0;
         _mTargetNodeIndex = 0;
+        _mUpdateVisualArea = false;
         _mAnimNode.setId(objAd - 1); // reset
     }
 
@@ -118,20 +120,24 @@ protected: // top-down interface
         ImGui::Text("HeadNode: %p", &_mHeadNode); ImGui::Separator();
         ImGui::Text("Visual Mode: %s", _mDataVisible ? "Data" : "Link"); ImGui::Separator();
         ImGui::Text("Link Color: ");
-        ImGui::SameLine(); ImGui::TextColored({0, 1, 0, 1}, " --> ");
         ImGui::SameLine(); ImGui::TextColored({1, 0, 0, 1}, " <-- ");
-        ImGui::SameLine(); ImGui::TextColored({1, 1, 0, 1}, " <-> ");
+        ImGui::SameLine(); ImGui::TextColored({0, 1, 0, 1}, " --> ");
+        ImGui::SameLine(); ImGui::TextColored({1, 0, 0, 1}, " <");
+        ImGui::SameLine(); ImGui::TextColored({1, 1, 0, 1}, "-");
+        ImGui::SameLine(); ImGui::TextColored({0, 1, 0, 1}, "> ");
     }
 
     virtual void _drawVisualImpl() override {
         _mNodePosY = ImGui::GetWindowHeight() / 3;
         ImNodes::BeginNodeEditor();
-            // Head Node
-            _mNodeVec[0].render();
-            int prevIndex = 0;
-            {
+            {// Head Node
+                _mNodeVec[0].setPos(50, _mNodePosY - 100);
+                _mNodeVec[0].render();
+            }
+            {// List-Node
                 std::lock_guard<std::mutex> _al(_mUpdateListMutex);
                 auto it = _mHeadNode.link.next;
+                int prevIndex = 0;
                 for (int i = 1; i < _mNodeVec.size(); i++, it = it->next) {
 
                     _mNodeVec[i].render(
@@ -157,6 +163,10 @@ protected: // top-down interface
 
             if (_playAnimate()) {
                 _mAnimNode.render();
+                if (_mUpdateVisualArea) {
+                    _updateVisualArea();
+                    _mUpdateVisualArea = false;
+                }
             }
 
         ImNodes::MiniMap();
@@ -203,6 +213,7 @@ protected:
     int _mPrevNodeIndex;
     int _mNextNodeIndex;
     int _mTargetNodeIndex;
+    bool _mUpdateVisualArea;
     hanim::object::dsvisual::LNode _mAnimNode; // avoid render crash, details - dsvisual-issue1
 
     void _updateAnimateData(NodeType *prev) {
@@ -217,6 +228,20 @@ protected:
             _mNextNodeIndex = _mPrevNodeIndex + 2;
             _mAnimNode.setVisible(false);
             _mNodeVec[_mTargetNodeIndex].setColor(255, 0, 0);
+        }
+        _mUpdateVisualArea = true;
+    }
+
+    void _updateVisualArea() {
+        ImVec2 nodePos;
+        _mNodeVec[_mPrevNodeIndex].getPos(nodePos.x, nodePos.y);
+        auto panning = ImNodes::EditorContextGetPanning();
+        if (nodePos.x + panning.x > ImGui::GetWindowWidth() / 3 || nodePos.x + panning.x < 0) {
+            if (ImGui::GetWindowWidth() < 600)
+                panning.x = -nodePos.x + 50;
+            else
+                panning.x = ImGui::GetWindowWidth() / 3 - nodePos.x;
+            ImNodes::EditorContextResetPanning(panning);
         }
     }
 
@@ -238,11 +263,17 @@ protected:
             case hanim::InterpolationAnim::MOVE:
                 if (frame.data[1] == -1) { // move x: list
                     _updateListPos(_mNextNodeIndex, frame.data[0]);
-                } else if (frame.data[0] == -1) { // move y
+                } else if (frame.data[0] <= -1) { // move y
                     float currNodePosX = 50 + _mNodePosXOffset * _mTargetNodeIndex;
                     _mAnimNode.setPos(currNodePosX, frame.data[1]);
                     _mAnimNode.setUpdatePos(true);
-                    if (frame.data[1] >= _mNodePosY / 2 + 1) {
+                    /*
+                        | -> segment1: -1: no link
+                        - mid
+                        | -> segment2: -2: to link
+                        V
+                    */
+                    if (frame.data[0] == -2) {
                         hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mAnimNode, -1);
                         if (_mNextNodeIndex < _mNodeVec.size()) {
                             hanim::object::dsvisual::LNode::connect(_mAnimNode, _mNodeVec[_mNextNodeIndex], 1);
@@ -281,7 +312,7 @@ protected:
                 if (_mNextNodeIndex < _mNodeVec.size()) {
                     hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex], 1);
                     if (frame.data[0] > 1)
-                        hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex], -1);
+                        hanim::object::dsvisual::LNode::connect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mNextNodeIndex]);
                     if (frame.data[0] > 2) {
                         hanim::object::dsvisual::LNode::disconnect(_mNodeVec[_mPrevNodeIndex], _mNodeVec[_mTargetNodeIndex], -1);
                         hanim::object::dsvisual::LNode::disconnect(_mNodeVec[_mTargetNodeIndex], _mNodeVec[_mNextNodeIndex], 1);
@@ -296,14 +327,13 @@ protected:
     }
 
 protected:
-    void _updateListPos(int startIndex = 0, float offset = 0) {
-        for (int i = startIndex < 0 ? 0 : startIndex; i < _mNodeVec.size(); i++) {
+    void _updateListPos(int startIndex = 1, float offset = 0) {
+        for (int i = startIndex < 1 ? 1 : startIndex; i < _mNodeVec.size(); i++) {
             float nodePosX = 50 + _mNodePosXOffset * i + offset;
             _mNodeVec[i].setPos(nodePosX, _mNodePosY);
             _mNodeVec[i].setUpdatePos(true);
             _mNodeVec[i].setVisible(true);
-            if (i != 0)
-                _mNodeVec[i].setColor(-1, -1, -1); // set default
+            _mNodeVec[i].setColor(-1, -1, -1); // set default
         }
     }
 
