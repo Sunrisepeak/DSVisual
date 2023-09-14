@@ -28,7 +28,7 @@ struct InsertAnim : public hanim::ComposeAnim {
             2 * subF
         );
 
-        hanim::ComposeAnim::move(-1, y / 2 + 1, -1, y) // move Y 2
+        hanim::ComposeAnim::move(-2, y / 2 + 1, -2, y) // move Y 2
             .setFrameNums(subF);
         setFrameTrackIndex(3 * subF);
 

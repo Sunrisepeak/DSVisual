@@ -4,6 +4,8 @@
 
 #include <Hanim.hpp>
 
+#include <string>
+
 #include <imgui.h>
 #include <imnodes.h>
 
@@ -12,26 +14,26 @@ namespace object {
 namespace dsvisual {
 
 class LNode : public hanim::HObjectTemplate {
+    using ID = unsigned long long;
 public:
-    LNode(int id) : HObjectTemplate(), __mId { id }, __mUpdatePos { true }, __mVisible { true }  { }
+    LNode(ID id) : HObjectTemplate(), __mId { id }, __mTitle {""}, __mUpdatePos { true }, __mVisible { true }  { }
     LNode & operator=(const LNode &node) {
         __mId = node.__mId;
         __mUpdatePos = node.__mUpdatePos;
         __mVisible = node.__mVisible;
+        __mTitle = node.__mTitle;
     }
 public:
     // -1: <-
     // 0 : <->
     // 1 : ->
     static void connect(const LNode &node1, const LNode &node2, int flag = 0) {
+        Link(node2.linkIdL(), node2.inputId(), node1.outputId(), IM_COL32(255, 0, 0, 100));
+        Link(node1.linkIdR(), node1.outputId(), node2.inputId(), IM_COL32(0, 255, 0, 150));
         if (flag == 1)
-            Link(node1.linkIdR(), node1.outputId(), node2.inputId(), IM_COL32(0, 255, 0, 150));
+            disconnect(node1, node2, -1);
         else if (flag == -1)
-            Link(node2.linkIdL(), node2.inputId(), node1.outputId(), IM_COL32(255, 0, 0, 100));
-        else {
-            Link(node1.linkIdR(), node1.outputId(), node2.inputId(), IM_COL32(0, 255, 0, 150));
-            Link(node2.linkIdL(), node2.inputId(), node1.outputId(), IM_COL32(255, 0, 0, 100));
-        }
+            disconnect(node1, node2, 1);
     }
 
     static void disconnect(const LNode &node1, const LNode &node2, int flag = 0) {
@@ -45,24 +47,27 @@ public:
         }
     }
 
-    static void Link(const int id, const int portId1, const int portId2, unsigned int color) {
+    static void Link(const ID id, const ID portId1, const ID portId2, unsigned int color) {
         ImNodes::PushColorStyle(ImNodesCol_Link, color);
         ImNodes::Link(id, portId1, portId2);
         ImNodes::PopColorStyle();
     } 
 public:
-    int id() const { return __mId; }
-    int inputId() const { return __mId + 1; }
-    int outputId() const { return __mId + 2; }
-    int linkIdL() const { return __mId + 3; }
-    int linkIdR() const { return __mId + 4; }
+    ID id() const { return __mId; }
+    ID inputId() const { return __mId + 1; }
+    ID outputId() const { return __mId + 2; }
+    ID linkIdL() const { return __mId + 3; }
+    ID linkIdR() const { return __mId + 4; }
 public:
-    void setId(int id) { __mId = id; };
+    void setId(ID id) { __mId = id; };
     void setUpdatePos(bool update = true) {
         __mUpdatePos = update;
     }
     void setVisible(bool visible) {
         __mVisible = visible;
+    }
+    void setTitle(std::string title) {
+        __mTitle = title;
     }
 public:
     void render(std::function<void ()> drawData = nullptr) {
@@ -82,6 +87,13 @@ public:
         ImNodes::SetNodeDraggable(__mId, true);
 
         ImNodes::BeginNode(__mId);
+
+            if (__mTitle != "") {
+                ImNodes::BeginNodeTitleBar();
+                ImGui::TextUnformatted(__mTitle.c_str());
+                ImNodes::EndNodeTitleBar();
+            }
+
             ImGui::Button("prev");
             ImNodes::BeginInputAttribute(inputId());
             ImNodes::EndInputAttribute();
@@ -101,7 +113,8 @@ protected: // interface impl
         render(nullptr);
     }
 private:
-    int __mId;
+    ID __mId;
+    std::string __mTitle;
     bool __mUpdatePos;
     bool __mVisible;
 };

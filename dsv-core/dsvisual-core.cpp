@@ -183,7 +183,7 @@ void PlatformManager::__platformInit() {
     // transparency hint goes before glfwCreateWindow
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
 
-    __mWindow = glfwCreateWindow(1280, 720, "DSVisual", nullptr, nullptr);
+    __mWindow = glfwCreateWindow(1920, 1080, "DSVisual", nullptr, nullptr);
 
     DSTRUCT_ASSERT(__mWindow != nullptr);
     

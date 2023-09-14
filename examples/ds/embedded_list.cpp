@@ -15,6 +15,8 @@ int main() {
     ds::EmbeddedList<MyNode> eList;
 
     eList.setVisible(true);
+    eList.setPos(0, 0);
+    eList.setSize(1920, 1080);
 
     { // data struct visualization
         ds::EmbeddedList<MyNode>::init(eList.headNodePtr());
