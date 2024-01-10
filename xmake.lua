@@ -22,10 +22,11 @@ add_includedirs("third-party/Hanim")
 
 ---- XRecorder: OpenGLRecorder
 add_includedirs("third-party/XRecorder")
+--[[
 add_requires("opencv 4.6")
 add_packages("opencv")
+--]]
 
---[[
 if is_plat("linux") then
     add_includedirs("/usr/include/opencv4")
     add_links("GL")
@@ -34,24 +35,11 @@ if is_plat("linux") then
     add_links("opencv_highgui")
     add_links("opencv_imgproc", "opencv_videoio", "opencv_imgcodecs")
 end
---]]
 
 -- config dsvisual
 add_includedirs(".")
-add_files("dsv-core/dsvisual-core.cpp")
 
 target("dsvisual_array")
     set_kind("binary")
-    add_files("examples/ds/array.cpp")
+    add_files("examples/array.cpp")
 
-target("dsvisual_embedded_list")
-    set_kind("binary")
-    add_files("examples/ds/embedded_list.cpp")
-
-target("dsvisual_sort-visualization")
-    set_kind("binary")
-    add_files("examples/algo/sort-visualization.cpp")
-
-target("dsvisual_sort-bugview")
-    set_kind("binary")
-    add_files("examples/algo/sort-bugview.cpp")
